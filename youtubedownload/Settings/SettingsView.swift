@@ -6,6 +6,7 @@ struct SettingsView: View {
     @Bindable var settings: SettingsStore
     let launchAtLogin: LaunchAtLogin
     let ytDlp: YtDlpStatus
+    let updater: (any AppUpdating)?
 
     private var launchAtLoginBinding: Binding<Bool> {
         Binding(get: { launchAtLogin.isEnabled }, set: { launchAtLogin.setEnabled($0) })
@@ -44,6 +45,10 @@ struct SettingsView: View {
                         .help(settings.downloadFolder.path(percentEncoded: false))
                     Button("Choose…", action: chooseFolder)
                 }
+            }
+
+            if let updater {
+                UpdatesSection(updater: updater)
             }
 
             Section {

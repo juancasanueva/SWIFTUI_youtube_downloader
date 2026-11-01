@@ -9,6 +9,10 @@ final class AppModel {
 
     private let launchAtLogin = LaunchAtLogin(service: MainAppLoginItem())
     private let ytDlp = YtDlpStatus(locate: ProcessVideoDownloader().locateExecutable)
+    /// `nil` in the unit-test host, which must never reach Sparkle or the network.
+    private let updater: (any AppUpdating)? = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
+        ? SparkleUpdateChecker(automaticChecks: AutomaticUpdateChecks())
+        : nil
 
     private lazy var settingsWindow = makeSettingsWindow()
     private var statusItem: StatusItemController?
@@ -16,7 +20,7 @@ final class AppModel {
 
     init() {
         launchAtLogin.applyDefault()
-        statusItem = StatusItemController(queue: queue, settings: settings) { [weak self] in
+        statusItem = StatusItemController(queue: queue, settings: settings, updater: updater) { [weak self] in
             self?.showSettings()
         }
         hotKey = GlobalHotKey(keyCode: kVK_ANSI_D, modifiers: optionKey | shiftKey) { [weak self] in
@@ -30,7 +34,7 @@ final class AppModel {
     }
 
     private func makeSettingsWindow() -> NSWindow {
-        let controller = NSHostingController(rootView: SettingsView(settings: settings, launchAtLogin: launchAtLogin, ytDlp: ytDlp))
+        let controller = NSHostingController(rootView: SettingsView(settings: settings, launchAtLogin: launchAtLogin, ytDlp: ytDlp, updater: updater))
         controller.sizingOptions = [.preferredContentSize]
         let window = NSWindow(contentViewController: controller)
         window.title = "Settings"

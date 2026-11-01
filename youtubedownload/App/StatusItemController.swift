@@ -17,6 +17,8 @@ nonisolated struct StatusItemLook: Equatable {
 final class StatusItemController: NSObject, NSPopoverDelegate {
     private let queue: DownloadQueue
     private let settings: SettingsStore
+    /// `nil` in the unit-test host; the menu item is then disabled.
+    private let updater: (any AppUpdating)?
     private let openSettings: () -> Void
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let popover = NSPopover()
@@ -26,9 +28,10 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         popover.isShown
     }
 
-    init(queue: DownloadQueue, settings: SettingsStore, openSettings: @escaping () -> Void) {
+    init(queue: DownloadQueue, settings: SettingsStore, updater: (any AppUpdating)?, openSettings: @escaping () -> Void) {
         self.queue = queue
         self.settings = settings
+        self.updater = updater
         self.openSettings = openSettings
         super.init()
 
@@ -127,8 +130,15 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         statusItem.menu = nil
     }
 
-    private func makeContextMenu() -> NSMenu {
+    func makeContextMenu() -> NSMenu {
         let menu = NSMenu()
+        menu.autoenablesItems = false
+
+        let updatesItem = NSMenuItem(title: "Check for Updates…", action: #selector(performCheckForUpdates), keyEquivalent: "")
+        updatesItem.target = self
+        updatesItem.isEnabled = UpdateCommandEnablement.isEnabled(canCheckForUpdates: updater?.canCheckForUpdates ?? false)
+        menu.addItem(updatesItem)
+
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(performOpenSettings), keyEquivalent: ",")
         settingsItem.target = self
         menu.addItem(settingsItem)
@@ -137,6 +147,14 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         quitItem.target = self
         menu.addItem(quitItem)
         return menu
+    }
+
+    /// Sparkle shows its own window, so the panel gets out of the way, and a menu bar
+    /// app has to come forward or that window opens behind whatever is in front.
+    @objc private func performCheckForUpdates() {
+        if popover.isShown { popover.performClose(nil) }
+        NSApp.activate(ignoringOtherApps: true)
+        updater?.checkForUpdates()
     }
 
     @objc private func performOpenSettings() {

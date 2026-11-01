@@ -26,7 +26,7 @@ struct StatusItemControllerTests {
 
     private func makeController() -> StatusItemController {
         let defaults = UserDefaults(suiteName: "StatusItemControllerTests.\(UUID().uuidString)")!
-        return StatusItemController(queue: queue, settings: SettingsStore(defaults: defaults), openSettings: {})
+        return StatusItemController(queue: queue, settings: SettingsStore(defaults: defaults), updater: nil, openSettings: {})
     }
 
     private func waitUntil(_ condition: () -> Bool) async throws {
