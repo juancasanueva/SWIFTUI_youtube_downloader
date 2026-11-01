@@ -60,15 +60,14 @@ All of this is still to do for YouTubeDownloader, in order, before the first rel
 5. **Rehearse with a prerelease tag first.** Push `v1.0.0-rc.1`: it runs the whole
    build, including the first compile with the workflow's Xcode, signing and
    notarization, and publishes a prerelease with no feed entry. See section 3.
-6. **The Homebrew cask, right after the first stable release.** `Casks/youtube-downloader.rb`
-   belongs in `juancasanueva/tap` (`juancasanueva/homebrew-tap`), with a `youtube-downloader`
-   entry in its `bump.yml` matrix and `ci.yml`. The tap change starts with
-   `sha256 :no_check` as a placeholder, which `bump.yml` cannot rewrite: replace it
-   by hand with `sha256 "<sha256 of YouTubeDownloader-<version>.zip>"` before pushing, once the
-   first release exists, and make the cask's `version` equal that release. The ready
-   change is on branch `feat/add-youtube-downloader` of a local tap clone at
-   `~/programming/swiftUI/homebrew-tap-youtube-downloader`. After that the tap pulls new versions on a schedule from
-   this repository's `releases/latest`; the release job never pushes to it.
+6. **The Homebrew cask is in place.** `Casks/yt_downloader.rb` lives in
+   `juancasanueva/tap` (`juancasanueva/homebrew-tap`), with a `yt_downloader`
+   entry in its `bump.yml` matrix and `ci.yml`. The tap pulls new versions on a
+   schedule from this repository's `releases/latest`; the release job never pushes
+   to it. The token isn't `youtube-downloader` because the official catalog has an
+   unrelated, disabled cask with that name, which the short name would resolve to.
+   Check a token against `https://formulae.brew.sh/api/cask/<token>.json` before
+   using it. A 404 means it's free.
 
 ## 3. Cutting a release
 
@@ -228,5 +227,5 @@ release by publishing a higher version.
   already exists; see "After Publish".
 - **The run is green but the feed is stale.** Usually the Pages CDN; compare the
   feed's `last-modified`. A hyphenated tag skips the feed by design.
-- **`brew install --cask juancasanueva/tap/youtube-downloader` says an app is already
-  there.** Use `brew install --cask --adopt juancasanueva/tap/youtube-downloader`.
+- **`brew install --cask juancasanueva/tap/yt_downloader` says an app is already
+  there.** Use `brew install --cask --adopt juancasanueva/tap/yt_downloader`.

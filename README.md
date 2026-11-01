@@ -5,7 +5,7 @@ A small macOS menu bar app that downloads YouTube videos with [yt-dlp](https://g
 ## Install
 
 ```sh
-brew install --cask juancasanueva/tap/youtube-downloader
+brew install --cask juancasanueva/tap/yt_downloader
 ```
 
 This also installs `yt-dlp` and `ffmpeg`, which the app needs. Apple silicon and macOS 15.6 or later only.

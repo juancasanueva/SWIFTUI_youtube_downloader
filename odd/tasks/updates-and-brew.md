@@ -7,7 +7,7 @@ Branch: feat/updates-and-brew. Delivery: exception-ok (mostly ported files; push
 - S2. In-app updates through Sparkle 2.9.6: a Check for Updates command, an automatic-check preference that stays off until the user turns it on, and when the app last checked, as in Attic.
 - S3. Notarized release built by a tag push through GitHub Actions: archive, export, notarize, staple, verify, smoke, GitHub Release, appcast on GitHub Pages, as in Attic.
 - S4. Homebrew cask in the existing tap juancasanueva/homebrew-tap, with its bump and CI entries.
-- S5. Product name "YouTubeDownloader" (user's choice), cask token `youtube-downloader`. The bundle identifier stays com.juancasanueva.youtubedownload so settings carry over.
+- S5. Product name "YouTubeDownloader" (user's choice), cask token `yt_downloader`. The bundle identifier stays com.juancasanueva.youtubedownload so settings carry over.
 - S6. Assumption: the cask depends on the `yt-dlp` and `ffmpeg` formulae, because the app needs both and Homebrew's yt-dlp doesn't bring ffmpeg.
 - S7. "the image is called icon_image.png. Use it as the icon for the app"
 
@@ -38,3 +38,6 @@ Branch: feat/updates-and-brew. Delivery: exception-ok (mostly ported files; push
 - L14: v1.0.0 released (run 41350841508): every step green, feed live at build 2, zip accepted by Gatekeeper as notarized. Cask sha256 set on the local tap branch; the tap isn't pushed. A real update through Sparkle needs a second version and is unproven.
 - L15: Tap pushed (19c09c9). Its CI stopped at the online audit on attic and terrazzo, which were behind their releases; youtube-downloader wasn't flagged. Dev builds removed and the cask installed locally: 1.0.0 (2), notarized, running from /Applications; Launch at Login registered at first launch.
 - L16 (2026-11-01, user): "to the opne things", read as doing the listed open items: this record on main, v1.0.1 as the second version for a real update, and the tap's Bump workflow.
+- L17: v1.0.1 released (run 41351865006) and installed by the user through Sparkle, proving a real update. Tap Bump and CI (41352556362) passed, including the cask's install and uninstall on a clean machine.
+- L18 (2026-11-01, user): a user reported "youtube-downloader: Cask youtube-downloader has been disabled because it does not pass the macOS Gatekeeper check!". Cause: the official catalog has an unrelated, disabled cask with that token, and the short name resolves to it. The user first chose `youtubedownloader`, which reached the tap, then asked for `yt_downloader`; S5 updated.
+- L19 (2026-11-01, user): "rename it to yt_downloader". Applied to the cask token only; the app stays YouTubeDownloader.app. Homebrew's token rule allows underscores. cask_renames.json maps both old tokens.
