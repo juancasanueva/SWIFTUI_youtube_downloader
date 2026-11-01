@@ -36,7 +36,7 @@ History is stored in `~/Library/Application Support/com.juancasanueva.youtubedow
 ## Requirements
 
 - macOS 15.6 or later
-- Xcode 26.6 or later to build
+- Xcode 26.6 or later to build (releases are built with 26.6)
 - yt-dlp and ffmpeg. The cask installs both; when building from source, install them yourself. Homebrew's yt-dlp already brings the JavaScript runtime it needs (Deno), but not ffmpeg, and without ffmpeg downloads silently fall back to about 360p:
 
   ```sh

@@ -57,12 +57,17 @@ All of this is still to do for YouTubeDownloader, in order, before the first rel
    2.9.6's `./bin/generate_keys -x sparkle-private.key` if you need it offline.
    Losing it severs the update channel of **every** app that shares it; the
    public key is not a secret.
-5. **The Homebrew cask, right after the first release.** `Casks/youtube-downloader.rb`
+5. **Rehearse with a prerelease tag first.** Push `v1.0.0-rc.1`: it runs the whole
+   build, including the first compile with the workflow's Xcode, signing and
+   notarization, and publishes a prerelease with no feed entry. See section 3.
+6. **The Homebrew cask, right after the first stable release.** `Casks/youtube-downloader.rb`
    belongs in `juancasanueva/tap` (`juancasanueva/homebrew-tap`), with a `youtube-downloader`
    entry in its `bump.yml` matrix and `ci.yml`. The tap change starts with
    `sha256 :no_check` as a placeholder, which `bump.yml` cannot rewrite: replace it
    by hand with `sha256 "<sha256 of YouTubeDownloader-<version>.zip>"` before pushing, once the
-   first release exists. After that the tap pulls new versions on a schedule from
+   first release exists, and make the cask's `version` equal that release. The ready
+   change is on branch `feat/add-youtube-downloader` of a local tap clone at
+   `~/programming/swiftUI/homebrew-tap-youtube-downloader`. After that the tap pulls new versions on a schedule from
    this repository's `releases/latest`; the release job never pushes to it.
 
 ## 3. Cutting a release
@@ -206,7 +211,9 @@ release by publishing a higher version.
 - **Smoke failed.** The delivered app exited within 20 s; the last lines of
   `build/smoke.log` are printed. Nothing was published.
 - **Pin Xcode fails.** The runner image dropped Xcode 26.6; update the pin to an
-  Xcode the project builds with locally.
+  Xcode the runner offers. Local development uses a newer Xcode than the workflow,
+  so a code change can compile locally and still fail at Archive. Nothing is
+  published when it does.
 - **Stopped at the distinct-commit gate.** This commit already deployed the
   feed successfully. Put the new version on a new commit and tag that. If the
   gate reports an in-progress or unknown status instead, wait for that

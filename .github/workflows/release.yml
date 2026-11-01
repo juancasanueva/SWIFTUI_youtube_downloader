@@ -99,9 +99,10 @@ jobs:
       - name: Check out the tagged commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      # The release is built with the Xcode the project was created and last
-      # upgraded with (Xcode 26.6, LastUpgradeCheck 2660) and its macOS 26 SDK,
-      # matching local development. The build settings rely on Swift 6.2
+      # The release is built with Xcode 26.6 and its macOS 26 SDK, the newest
+      # Xcode on this runner image. Local development uses a newer Xcode, so a
+      # prerelease tag is what proves the app still compiles here. The build
+      # settings rely on Swift 6.2
       # (SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor, approachable concurrency),
       # which only Xcode 26 compilers honour. The deployment target is macOS 15.6.
       - name: Pin Xcode
