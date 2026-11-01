@@ -3,25 +3,27 @@ import Testing
 @testable import youtubedownload
 
 struct YouTubeURLTests {
-    @Test("Accepts video URLs", arguments: [
+    @Test("Reduces every video URL form to the canonical watch URL", arguments: [
         "https://www.youtube.com/watch?v=jNQXAC9IVRw",
         "http://youtube.com/watch?v=jNQXAC9IVRw&list=PL123",
         "https://m.youtube.com/watch?v=jNQXAC9IVRw",
         "https://music.youtube.com/watch?v=jNQXAC9IVRw",
+        "HTTPS://WWW.YOUTUBE.COM/watch?v=jNQXAC9IVRw",
         "https://youtu.be/jNQXAC9IVRw",
-        "https://www.youtube.com/shorts/abc123",
-        "https://www.youtube.com/live/abc123",
-        "https://www.youtube.com/embed/abc123",
+        "https://youtu.be/jNQXAC9IVRw?si=shared",
+        "https://www.youtube.com/shorts/jNQXAC9IVRw",
+        "https://www.youtube.com/live/jNQXAC9IVRw",
+        "https://www.youtube.com/embed/jNQXAC9IVRw",
     ])
     func acceptsVideoURLs(text: String) throws {
         let url = try #require(YouTubeURL(text))
-        #expect(url.url.absoluteString == text)
+        #expect(url.url.absoluteString == "https://www.youtube.com/watch?v=jNQXAC9IVRw")
     }
 
     @Test("Trims whitespace and assumes https when the scheme is missing")
     func normalizesPastedText() throws {
         let url = try #require(YouTubeURL("  youtube.com/watch?v=abc\n"))
-        #expect(url.url.absoluteString == "https://youtube.com/watch?v=abc")
+        #expect(url.url.absoluteString == "https://www.youtube.com/watch?v=abc")
     }
 
     @Test("Rejects anything that is not a single YouTube video", arguments: [
@@ -38,6 +40,13 @@ struct YouTubeURLTests {
         "https://www.youtube.com/playlist?list=PL123",
         "https://www.youtube.com/@channel",
         "https://youtu.be/",
+        "https://www.youtube.com/embed/videoseries?list=PL123",
+        "https://youtu.be/videoseries?list=PL123",
+        "https://www.youtube.com:8443/watch?v=abc",
+        "https://evil@www.youtube.com/watch?v=abc",
+        "https://www.youtube.com/watch/foo/bar?v=abc",
+        "https://www.youtube.com/watch?v=x%0Ahttps://evil.example/",
+        "https://www.youtube.com/watch?v=x%20--exec%20rm",
     ])
     func rejectsOtherInput(text: String) {
         #expect(YouTubeURL(text) == nil)
@@ -64,7 +73,7 @@ struct YtDlpCommandTests {
             "-P", "/tmp/My Videos/",
             "-o", "%(title)s [%(id)s].%(ext)s",
             "--",
-            "https://youtu.be/abc",
+            "https://www.youtube.com/watch?v=abc",
         ])
     }
 }

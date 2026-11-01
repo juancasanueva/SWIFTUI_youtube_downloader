@@ -21,6 +21,7 @@ private struct FakeDownloader: VideoDownloading {
 @MainActor
 struct DownloadStoreTests {
     private let validURL = "https://youtu.be/abc"
+    private let canonicalURL = "https://www.youtube.com/watch?v=abc"
     private let destination = URL(filePath: "/tmp/videos", directoryHint: .isDirectory)
 
     @Test("Rejects an invalid URL without starting a download")
@@ -45,7 +46,7 @@ struct DownloadStoreTests {
         store.start(urlText: validURL, destination: destination)
         #expect(store.phase == .downloading(progress: nil))
         #expect(store.isDownloading)
-        #expect(downloader.received.video?.url.absoluteString == validURL)
+        #expect(downloader.received.video?.url.absoluteString == canonicalURL)
         #expect(downloader.received.destination == destination)
 
         continuation.yield(.progress(0.5))
@@ -80,7 +81,7 @@ struct DownloadStoreTests {
         store.start(urlText: validURL, destination: destination)
         store.start(urlText: "https://youtu.be/other", destination: destination)
 
-        #expect(downloader.received.video?.url.absoluteString == validURL)
+        #expect(downloader.received.video?.url.absoluteString == canonicalURL)
     }
 
     @Test("Cancelling returns to idle")

@@ -77,7 +77,7 @@ struct ProcessVideoDownloaderTests {
             events.append(event)
         }
 
-        #expect(events == [.finished(URL(filePath: "https://youtu.be/abc"))])
+        #expect(events == [.finished(URL(filePath: "https://www.youtube.com/watch?v=abc"))])
     }
 
     @Test("Stops the process when the consumer cancels")
@@ -101,6 +101,34 @@ struct ProcessVideoDownloaderTests {
         let pid = try #require(pid_t(text.trimmingCharacters(in: .whitespacesAndNewlines)))
         var isAlive = true
         for _ in 0..<500 where isAlive {
+            isAlive = kill(pid, 0) == 0
+            if isAlive { try await Task.sleep(for: .milliseconds(10)) }
+        }
+        #expect(!isAlive)
+    }
+
+    @Test("Cancelling also stops child processes such as ffmpeg")
+    func cancelsChildProcesses() async throws {
+        let directory = try makeScratchDirectory()
+        let pidFile = directory.appending(path: "child-pid")
+        let downloader = try makeDownloader(script: """
+        sleep 30 &
+        echo $! > '\(pidFile.path)'
+        echo 'progress=1.0'
+        wait
+        """, in: directory)
+
+        let task = Task {
+            for try await event in downloader.download(video, to: destination) {
+                if case .progress = event { withUnsafeCurrentTask { $0?.cancel() } }
+            }
+        }
+        _ = try await task.value
+
+        let text = try String(contentsOf: pidFile, encoding: .utf8)
+        let pid = try #require(pid_t(text.trimmingCharacters(in: .whitespacesAndNewlines)))
+        var isAlive = true
+        for _ in 0..<200 where isAlive {
             isAlive = kill(pid, 0) == 0
             if isAlive { try await Task.sleep(for: .milliseconds(10)) }
         }
