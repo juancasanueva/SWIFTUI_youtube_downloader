@@ -22,7 +22,7 @@ The app updates itself through Sparkle: right-click the menu bar icon and choose
 - **History:** the last 200 downloads are kept, so you can play them again, show them in Finder, open their transcript, or retry failures.
 - Downloads keep running after you close the panel, and a URL you were typing is still there when you reopen it. The menu bar icon fills in while the app is busy.
 - **Resolution:** choose Best, 1080p, 720p or 480p next to the URL field. The app remembers your choice, and a playlist's videos all use it. A video that doesn't reach that height downloads at the closest one.
-- Saves `.mp4` files, with the height in the name so each resolution gets its own file. 1080p and below prefer H.264/AAC, which plays in QuickTime. YouTube generally has no H.264 above 1080p, so Best can give AV1 or VP9, which QuickTime may not play.
+- Saves `.mp4` files, with the height in the name so each resolution gets its own file, and with `:` and `|` in the title replaced by `-`. 1080p and below prefer H.264/AAC, which plays in QuickTime. YouTube generally has no H.264 above 1080p, so Best can give AV1 or VP9, which QuickTime may not play.
 - Choose the download folder in Settings, from the panel's gear button or by right-clicking the icon. The default is `~/Downloads`.
 - Right-click the icon to quit.
 - **Launch at Login:** on by default once the app is in `/Applications` or `~/Applications`, and only applied once, so turning it off in Settings sticks. Copies run from a build folder stay off unless you turn it on yourself.

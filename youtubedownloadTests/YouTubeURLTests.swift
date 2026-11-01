@@ -98,11 +98,13 @@ struct YtDlpCommandTests {
             "--progress",
             "--no-simulate",
             "--no-warnings",
+            "--parse-metadata", "title:(?P<file_title>.+)",
+            "--replace-in-metadata", "file_title", "[:|]", "-",
             "--print", "before_dl:title=%(title)s",
             "--print", "after_move:file=%(filepath)s",
             "--progress-template", "download:progress=%(progress._percent)s\t%(progress._speed_str)s\t%(progress._eta_str)s",
             "-P", "/tmp/My Videos/",
-            "-o", "%(title)s [%(id)s] %(height)sp.%(ext)s",
+            "-o", "%(file_title,title)s [%(id)s] %(height)sp.%(ext)s",
             "--",
             "https://www.youtube.com/watch?v=abc",
         ])
@@ -124,6 +126,39 @@ struct YtDlpCommandTests {
         #expect(arguments[arguments.firstIndex(of: "-S")! + 1] == "res,fps,hdr:12,acodec:aac")
     }
 
+    /// Runs the real yt-dlp offline on a saved title, so this proves the file name, not just the flags.
+    @Test("Names the file with hyphens for colons and pipes, without changing the title", .enabled(if: FileManager.default.isExecutableFile(atPath: "/opt/homebrew/bin/yt-dlp")))
+    func replacesCharactersInFileName() throws {
+        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let info = directory.appending(path: "info.json")
+        try #"{"id":"abc","title":"A: b | c","ext":"mp4","extractor":"generic","extractor_key":"Generic","webpage_url":"http://x.invalid/","url":"http://x.invalid/v.mp4","height":720}"#
+            .write(to: info, atomically: true, encoding: .utf8)
+        let video = try #require(YouTubeURL("https://youtu.be/abc"))
+        let built = YtDlpCommand.videoArguments(for: video, destination: directory, quality: .p720)
+        func value(after flag: String, offset: Int = 1) -> String { built[built.firstIndex(of: flag)! + offset] }
+
+        let pipe = Pipe()
+        let process = Process()
+        process.executableURL = URL(filePath: "/opt/homebrew/bin/yt-dlp")
+        process.arguments = [
+            "--load-info-json", info.path(percentEncoded: false), "--skip-download", "--no-warnings",
+            "--parse-metadata", value(after: "--parse-metadata"),
+            "--replace-in-metadata", value(after: "--replace-in-metadata"),
+            value(after: "--replace-in-metadata", offset: 2), value(after: "--replace-in-metadata", offset: 3),
+            "--print", "%(title)s", "--print", "filename", "-o", value(after: "-o"),
+        ]
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        try process.run()
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+
+        let lines = String(decoding: data, as: UTF8.self).split(separator: "\n").map(String.init)
+        #expect(lines == ["A: b | c", "A- b - c [abc] 720p.mp4"])
+    }
+
     private func transcriptArguments(videoFile: URL?) throws -> [String] {
         let video = try #require(YouTubeURL("https://youtu.be/abc"))
         return YtDlpCommand.transcriptArguments(for: video, destination: destination, languages: "en,es", videoFile: videoFile)
@@ -141,6 +176,8 @@ struct YtDlpCommandTests {
             "--ignore-errors",
             "--sub-langs", "en-orig,es-orig,en,es",
             "--sub-format", "vtt/best",
+            "--parse-metadata", "title:(?P<file_title>.+)",
+            "--replace-in-metadata", "file_title", "[:|]", "-",
             "-P", "/tmp/My Videos/",
             "-o", "Clip [abc] 720p.%(ext)s",
             "--",
@@ -159,7 +196,7 @@ struct YtDlpCommandTests {
     func namesTranscriptsWithoutFile() throws {
         let arguments = try transcriptArguments(videoFile: nil)
 
-        #expect(arguments[arguments.firstIndex(of: "-o")! + 1] == "%(title)s [%(id)s].%(ext)s")
+        #expect(arguments[arguments.firstIndex(of: "-o")! + 1] == "%(file_title,title)s [%(id)s].%(ext)s")
     }
 
     @Test("Builds arguments that list a playlist without downloading it")

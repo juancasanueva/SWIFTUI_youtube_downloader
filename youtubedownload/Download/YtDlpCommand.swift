@@ -3,8 +3,15 @@ import Foundation
 nonisolated enum YtDlpCommand {
     /// The height keeps each resolution in its own file. With one shared name, asking for 720p
     /// after 1080p would find the existing file and report success without downloading anything.
-    private static let videoTemplate = "%(title)s [%(id)s] %(height)sp.%(ext)s"
-    private static let transcriptFallbackTemplate = "%(title)s [%(id)s].%(ext)s"
+    private static let videoTemplate = "%(file_title,title)s [%(id)s] %(height)sp.%(ext)s"
+    private static let transcriptFallbackTemplate = "%(file_title,title)s [%(id)s].%(ext)s"
+
+    /// Names files after a copy of the title with `:` and `|` replaced by `-`, instead of the
+    /// lookalike characters yt-dlp substitutes. The title itself stays intact for the panel.
+    private static let fileTitleArguments = [
+        "--parse-metadata", "title:(?P<file_title>.+)",
+        "--replace-in-metadata", "file_title", "[:|]", "-",
+    ]
 
     /// `--` keeps the URL from ever being read as an option.
     static func videoArguments(for video: YouTubeURL, destination: URL, quality: VideoQuality) -> [String] {
@@ -17,6 +24,7 @@ nonisolated enum YtDlpCommand {
             "--progress",
             "--no-simulate",
             "--no-warnings",
+        ] + fileTitleArguments + [
             "--print", "before_dl:title=%(title)s",
             "--print", "after_move:file=%(filepath)s",
             "--progress-template", "download:progress=%(progress._percent)s\t%(progress._speed_str)s\t%(progress._eta_str)s",
@@ -50,6 +58,7 @@ nonisolated enum YtDlpCommand {
             "--ignore-errors",
             "--sub-langs", tracks.joined(separator: ","),
             "--sub-format", "vtt/best",
+        ] + fileTitleArguments + [
             "-P", destination.path(percentEncoded: false),
             "-o", videoFile.map(transcriptTemplate) ?? transcriptFallbackTemplate,
             "--",
