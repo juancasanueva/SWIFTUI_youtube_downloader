@@ -5,14 +5,14 @@ import SwiftUI
 /// Composition root: owns the stores, the menu bar item, the hot key, and the settings window.
 final class AppModel {
     private let settings = SettingsStore()
-    private let downloads = DownloadStore(downloader: ProcessVideoDownloader())
+    private let queue = DownloadQueue(downloader: ProcessVideoDownloader(), history: HistoryStore())
 
     private lazy var settingsWindow = makeSettingsWindow()
     private var statusItem: StatusItemController?
     private var hotKey: GlobalHotKey?
 
     init() {
-        statusItem = StatusItemController(downloads: downloads, settings: settings) { [weak self] in
+        statusItem = StatusItemController(queue: queue, settings: settings) { [weak self] in
             self?.showSettings()
         }
         hotKey = GlobalHotKey(keyCode: kVK_ANSI_D, modifiers: optionKey | shiftKey) { [weak self] in

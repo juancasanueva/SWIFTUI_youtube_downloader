@@ -1,8 +1,32 @@
 import Foundation
 
+nonisolated struct DownloadRequest: Equatable, Sendable {
+    let video: YouTubeURL
+    let destination: URL
+    /// Comma-separated language codes, or `nil` to skip transcripts.
+    let transcriptLanguages: String?
+}
+
+nonisolated struct DownloadProgress: Equatable, Sendable {
+    let fraction: Double
+    let speed: String?
+    let timeRemaining: String?
+}
+
 nonisolated enum DownloadEvent: Equatable, Sendable {
-    case progress(Double)
+    case title(String)
+    case progress(DownloadProgress)
+    case fetchingTranscripts
+    case transcript(URL)
+    /// The video is still good; only its transcripts failed.
+    case transcriptsFailed(String)
+    /// Always the last event of a successful download.
     case finished(URL)
+}
+
+nonisolated struct PlaylistEntry: Equatable, Sendable {
+    let video: YouTubeURL
+    let title: String?
 }
 
 nonisolated enum DownloadError: LocalizedError, Equatable {
@@ -19,7 +43,8 @@ nonisolated enum DownloadError: LocalizedError, Equatable {
     }
 }
 
-/// Port for whatever performs the download. Cancelling the consumer stops the download.
+/// Port for whatever performs the downloads. Cancelling the consumer stops the work.
 nonisolated protocol VideoDownloading: Sendable {
-    func download(_ video: YouTubeURL, to destination: URL) -> AsyncThrowingStream<DownloadEvent, Error>
+    func download(_ request: DownloadRequest) -> AsyncThrowingStream<DownloadEvent, Error>
+    func playlistEntries(of playlist: YouTubePlaylistURL) async throws -> [PlaylistEntry]
 }

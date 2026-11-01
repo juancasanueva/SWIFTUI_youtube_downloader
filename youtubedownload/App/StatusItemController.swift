@@ -15,7 +15,7 @@ nonisolated struct StatusItemLook: Equatable {
 /// Owns the menu bar button and the popover that points at it.
 /// A left click toggles the popover; a right click shows the context menu.
 final class StatusItemController: NSObject, NSPopoverDelegate {
-    private let downloads: DownloadStore
+    private let queue: DownloadQueue
     private let settings: SettingsStore
     private let openSettings: () -> Void
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -26,8 +26,8 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         popover.isShown
     }
 
-    init(downloads: DownloadStore, settings: SettingsStore, openSettings: @escaping () -> Void) {
-        self.downloads = downloads
+    init(queue: DownloadQueue, settings: SettingsStore, openSettings: @escaping () -> Void) {
+        self.queue = queue
         self.settings = settings
         self.openSettings = openSettings
         super.init()
@@ -40,7 +40,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         popover.behavior = .applicationDefined
         popover.animates = true
         popover.delegate = self
-        observeDownloads()
+        observeQueue()
     }
 
     isolated deinit {
@@ -69,8 +69,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     }
 
     func popoverDidClose(_ notification: Notification) {
-        // Cleared on close, not on open, so a result that arrives while the panel is closed still gets seen.
-        downloads.clearResult()
+        queue.clearInputError()
         if let outsideClickMonitor {
             NSEvent.removeMonitor(outsideClickMonitor)
         }
@@ -79,7 +78,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
 
     private func makePanelContent() -> NSViewController {
         let view = DownloadPanelView(
-            store: downloads,
+            queue: queue,
             settings: settings,
             onOpenSettings: { [weak self] in self?.showSettingsFromPanel() },
             onClose: { [weak self] in self?.popover.performClose(nil) }
@@ -95,15 +94,15 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     }
 
     /// Redraws the button and re-arms itself for the next change.
-    private func observeDownloads() {
-        let isDownloading = withObservationTracking {
-            downloads.isDownloading
+    private func observeQueue() {
+        let isBusy = withObservationTracking {
+            queue.isBusy
         } onChange: { [weak self] in
             // Called before the change lands; read the new value on the next turn.
-            Task { @MainActor in self?.observeDownloads() }
+            Task { @MainActor in self?.observeQueue() }
         }
 
-        let look = StatusItemLook(isDownloading: isDownloading)
+        let look = StatusItemLook(isDownloading: isBusy)
         statusItem.button?.image = NSImage(
             systemSymbolName: look.symbolName,
             accessibilityDescription: look.accessibilityLabel

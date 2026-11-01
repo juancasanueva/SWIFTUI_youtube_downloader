@@ -16,76 +16,158 @@ nonisolated struct ProcessVideoDownloader: VideoDownloading {
         self.searchDirectories = searchDirectories
     }
 
-    func download(_ video: YouTubeURL, to destination: URL) -> AsyncThrowingStream<DownloadEvent, Error> {
+    func download(_ request: DownloadRequest) -> AsyncThrowingStream<DownloadEvent, Error> {
         AsyncThrowingStream { continuation in
-            guard let executable = locateExecutable() else {
-                continuation.finish(throwing: DownloadError.toolNotFound)
-                return
+            let task = Task.detached {
+                do {
+                    try await perform(request, reportingTo: continuation)
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
             }
-
-            let output = Pipe()
-            let process = Process()
-            process.executableURL = executable
-            process.arguments = YtDlpCommand.arguments(for: video, destination: destination)
-            process.environment = environment()
-            process.standardOutput = output
-            process.standardError = output
-            process.standardInput = FileHandle.nullDevice
-
-            // waitUntilExit() would block a cooperative thread and can hang forever there.
-            let (exitStatus, exitContinuation) = AsyncStream<Int32>.makeStream()
-            process.terminationHandler = { finished in
-                exitContinuation.yield(finished.terminationStatus)
-                exitContinuation.finish()
-            }
-
-            continuation.onTermination = { _ in
-                if process.isRunning { process.terminate() }
-            }
-
-            do {
-                try process.run()
-            } catch {
-                continuation.finish(throwing: DownloadError.failed(error.localizedDescription))
-                return
-            }
-
-            Task.detached {
-                await report(output: output, exitStatus: exitStatus, destination: destination, to: continuation)
-            }
+            continuation.onTermination = { _ in task.cancel() }
         }
     }
 
-    private func report(
-        output: Pipe,
-        exitStatus: AsyncStream<Int32>,
-        destination: URL,
-        to continuation: AsyncThrowingStream<DownloadEvent, Error>.Continuation
-    ) async {
-        var file: URL?
+    func playlistEntries(of playlist: YouTubePlaylistURL) async throws -> [PlaylistEntry] {
+        var entries: [PlaylistEntry] = []
         var lastError: String?
 
+        let status = try await run(arguments: YtDlpCommand.playlistArguments(for: playlist)) { line in
+            if case .error(let message) = YtDlpOutputLine(line) { lastError = message }
+            if let entry = Self.playlistEntry(from: line) { entries.append(entry) }
+        }
+
+        if status != 0, entries.isEmpty {
+            throw DownloadError.failed(lastError ?? Self.exitMessage(status))
+        }
+        return entries
+    }
+
+    // MARK: - Passes
+
+    private func perform(
+        _ request: DownloadRequest,
+        reportingTo continuation: AsyncThrowingStream<DownloadEvent, Error>.Continuation
+    ) async throws {
+        let file = try await downloadVideo(request, reportingTo: continuation)
+        if let languages = request.transcriptLanguages {
+            try Task.checkCancellation()
+            continuation.yield(.fetchingTranscripts)
+            await fetchTranscripts(request, languages: languages, reportingTo: continuation)
+        }
+        try Task.checkCancellation()
+        continuation.yield(.finished(file))
+    }
+
+    private func downloadVideo(
+        _ request: DownloadRequest,
+        reportingTo continuation: AsyncThrowingStream<DownloadEvent, Error>.Continuation
+    ) async throws -> URL {
+        var file: URL?
+        var lastError: String?
+        let arguments = YtDlpCommand.videoArguments(for: request.video, destination: request.destination)
+
+        let status = try await run(arguments: arguments) { line in
+            switch YtDlpOutputLine(line) {
+            case .title(let title): continuation.yield(.title(title))
+            case .progress(let progress): continuation.yield(.progress(progress))
+            case .file(let url): file = url
+            case .error(let message): lastError = message
+            case .transcript, .transcriptWarning, .other: break
+            }
+        }
+
+        guard status == 0 else {
+            throw DownloadError.failed(lastError ?? Self.exitMessage(status))
+        }
+        return file ?? request.destination
+    }
+
+    /// Never throws: the video is already saved, so a failure here is only reported.
+    private func fetchTranscripts(
+        _ request: DownloadRequest,
+        languages: String,
+        reportingTo continuation: AsyncThrowingStream<DownloadEvent, Error>.Continuation
+    ) async {
+        var written: [URL] = []
+        var lastError: String?
+        var lastWarning: String?
+        let arguments = YtDlpCommand.transcriptArguments(
+            for: request.video,
+            destination: request.destination,
+            languages: languages
+        )
+
+        let status: Int32
         do {
-            for try await line in output.fileHandleForReading.bytes.lines {
+            status = try await run(arguments: arguments) { line in
                 switch YtDlpOutputLine(line) {
-                case .progress(let fraction): continuation.yield(.progress(fraction))
-                case .file(let url): file = url
+                case .transcript(let url): written.append(url)
+                case .transcriptWarning(let message): lastWarning = message
                 case .error(let message): lastError = message
-                case .other: break
+                default: break
                 }
             }
         } catch {
-            lastError = lastError ?? error.localizedDescription
+            continuation.yield(.transcriptsFailed(error.localizedDescription))
+            return
         }
 
-        let status = await exitStatus.first { _ in true } ?? -1
+        // yt-dlp logs each path before fetching it, so a refused track has a line but no file.
+        let saved = written.filter { FileManager.default.fileExists(atPath: $0.path(percentEncoded: false)) }
+        saved.forEach { continuation.yield(.transcript($0)) }
 
-        if status == 0 {
-            continuation.yield(.finished(file ?? destination))
-            continuation.finish()
-        } else {
-            let message = lastError ?? "yt-dlp exited with code \(status)."
-            continuation.finish(throwing: DownloadError.failed(message))
+        // One saved language is a success. Only an empty result is worth reporting.
+        guard saved.isEmpty else { return }
+        if status != 0 {
+            continuation.yield(.transcriptsFailed(lastError ?? Self.exitMessage(status)))
+        } else if let lastWarning {
+            continuation.yield(.transcriptsFailed(lastWarning))
+        }
+    }
+
+    // MARK: - Process
+
+    /// Runs yt-dlp to completion, stopping it if the current task is cancelled.
+    private func run(arguments: [String], onLine: (String) -> Void) async throws -> Int32 {
+        guard let executable = locateExecutable() else {
+            throw DownloadError.toolNotFound
+        }
+
+        let output = Pipe()
+        let process = Process()
+        process.executableURL = executable
+        process.arguments = arguments
+        process.environment = environment()
+        process.standardOutput = output
+        process.standardError = output
+        process.standardInput = FileHandle.nullDevice
+
+        // waitUntilExit() would block a cooperative thread and can hang forever there.
+        let (exitStatus, exitContinuation) = AsyncStream<Int32>.makeStream()
+        process.terminationHandler = { finished in
+            exitContinuation.yield(finished.terminationStatus)
+            exitContinuation.finish()
+        }
+
+        do {
+            try process.run()
+        } catch {
+            throw DownloadError.failed(error.localizedDescription)
+        }
+
+        return await withTaskCancellationHandler {
+            // A read error only means less output; the exit status still decides the result.
+            do {
+                for try await line in output.fileHandleForReading.bytes.lines {
+                    onLine(line)
+                }
+            } catch {}
+            return await exitStatus.first { _ in true } ?? -1
+        } onCancel: {
+            if process.isRunning { process.terminate() }
         }
     }
 
@@ -101,5 +183,18 @@ nonisolated struct ProcessVideoDownloader: VideoDownloading {
         let directories = searchDirectories.map { $0.path(percentEncoded: false) }
         environment["PATH"] = (directories + [environment["PATH"] ?? "/usr/bin:/bin"]).joined(separator: ":")
         return environment
+    }
+
+    private static func exitMessage(_ status: Int32) -> String {
+        "yt-dlp exited with code \(status)."
+    }
+
+    /// Reads `id<TAB>title`. Anything else, such as a log line, is skipped.
+    private static func playlistEntry(from line: String) -> PlaylistEntry? {
+        let fields = line.split(separator: "\t", maxSplits: 1).map(String.init)
+        guard fields.count == 2, let video = YouTubeURL("https://youtu.be/\(fields[0])") else {
+            return nil
+        }
+        return PlaylistEntry(video: video, title: fields[1] == "NA" ? nil : fields[1])
     }
 }

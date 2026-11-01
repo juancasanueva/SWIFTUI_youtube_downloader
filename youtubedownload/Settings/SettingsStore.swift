@@ -5,6 +5,8 @@ import Observation
 @Observable
 final class SettingsStore {
     private static let downloadFolderKey = "downloadFolderPath"
+    private static let transcriptsEnabledKey = "transcriptsEnabled"
+    private static let transcriptLanguagesKey = "transcriptLanguages"
 
     var downloadFolder: URL {
         didSet {
@@ -12,14 +14,47 @@ final class SettingsStore {
         }
     }
 
+    var transcriptsEnabled: Bool {
+        didSet {
+            defaults.set(transcriptsEnabled, forKey: Self.transcriptsEnabledKey)
+        }
+    }
+
+    /// Comma-separated language codes, as typed in Settings.
+    var transcriptLanguages: String {
+        didSet {
+            defaults.set(transcriptLanguages, forKey: Self.transcriptLanguagesKey)
+        }
+    }
+
     @ObservationIgnored private let defaults: UserDefaults
 
-    init(defaults: UserDefaults = .standard) {
+    /// The languages to fetch, or `nil` when no transcript should be fetched.
+    var transcriptRequest: String? {
+        guard transcriptsEnabled else { return nil }
+        let languages = transcriptLanguages
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        return languages.isEmpty ? nil : languages.joined(separator: ",")
+    }
+
+    init(defaults: UserDefaults = .standard, locale: Locale = .current) {
         self.defaults = defaults
         if let path = defaults.string(forKey: Self.downloadFolderKey) {
             downloadFolder = URL(filePath: path, directoryHint: .isDirectory)
         } else {
             downloadFolder = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
         }
+        transcriptsEnabled = defaults.object(forKey: Self.transcriptsEnabledKey) as? Bool ?? true
+        transcriptLanguages = defaults.string(forKey: Self.transcriptLanguagesKey)
+            ?? Self.defaultTranscriptLanguages(for: locale)
+    }
+
+    private static func defaultTranscriptLanguages(for locale: Locale) -> String {
+        guard let code = locale.language.languageCode?.identifier, code != "en" else {
+            return "en"
+        }
+        return "en,\(code)"
     }
 }

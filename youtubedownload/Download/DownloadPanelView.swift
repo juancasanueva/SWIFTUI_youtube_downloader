@@ -1,87 +1,109 @@
-import AppKit
 import SwiftUI
 
 struct DownloadPanelView: View {
-    let store: DownloadStore
+    let queue: DownloadQueue
     let settings: SettingsStore
     let onOpenSettings: () -> Void
     let onClose: () -> Void
 
     @State private var urlText = ""
+    @State private var listHeight: CGFloat = 0
     @FocusState private var isURLFieldFocused: Bool
+
+    private let maxListHeight: CGFloat = 440
 
     var body: some View {
         VStack(alignment: .leading) {
-            HStack {
-                TextField("YouTube video URL", text: $urlText)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($isURLFieldFocused)
-                    .disabled(store.isDownloading)
-                    .onSubmit(startDownload)
+            inputRow
+            inputStatus
 
-                if store.isDownloading {
-                    Button("Cancel", action: store.cancel)
-                } else {
-                    Button("Download", action: startDownload)
-                        .keyboardShortcut(.defaultAction)
-                        .disabled(urlText.isEmpty)
-                }
-
-                Button("Settings", systemImage: "gearshape", action: onOpenSettings)
-                    .labelStyle(.iconOnly)
-                    .buttonStyle(.borderless)
-                    .help("Settings")
+            ScrollView {
+                lists
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { listHeight = $0 }
             }
-
-            status
+            .frame(height: min(listHeight, maxListHeight))
         }
         .padding()
         .frame(width: 420)
         .onAppear { isURLFieldFocused = true }
         .onExitCommand(perform: onClose)
-        .onChange(of: store.phase) { _, phase in
-            if case .finished = phase { urlText = "" }
+    }
+
+    private var inputRow: some View {
+        HStack {
+            TextField("YouTube video or playlist URL", text: $urlText)
+                .textFieldStyle(.roundedBorder)
+                .focused($isURLFieldFocused)
+                .onSubmit(submit)
+
+            Button("Download", action: submit)
+                .keyboardShortcut(.defaultAction)
+                .disabled(urlText.isEmpty)
+
+            Button("Settings", systemImage: "gearshape", action: onOpenSettings)
+                .labelStyle(.iconOnly)
+                .buttonStyle(.borderless)
+                .help("Settings")
         }
     }
 
     @ViewBuilder
-    private var status: some View {
-        switch store.phase {
-        case .idle:
+    private var inputStatus: some View {
+        if let error = queue.inputError {
+            Label(error, systemImage: "exclamationmark.triangle.fill")
+                .font(.caption)
+                .foregroundStyle(.red)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+        } else if queue.isReadingPlaylist {
+            Text("Reading playlist…")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else {
             Text("Saves to \(settings.downloadFolder.path(percentEncoded: false))")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .truncationMode(.middle)
-
-        case .downloading(let progress):
-            ProgressView(value: progress) {
-                Text("Downloading…").font(.caption)
-            }
-
-        case .finished(let file):
-            HStack {
-                Label(file.lastPathComponent, systemImage: "checkmark.circle.fill")
-                    .font(.caption)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Spacer()
-                Button("Show in Finder") {
-                    NSWorkspace.shared.activateFileViewerSelecting([file])
-                }
-                .controlSize(.small)
-            }
-
-        case .failed(let message):
-            Label(message, systemImage: "exclamationmark.triangle.fill")
-                .font(.caption)
-                .foregroundStyle(.red)
-                .textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    private func startDownload() {
-        store.start(urlText: urlText, destination: settings.downloadFolder)
+    private var lists: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if !queue.active.isEmpty {
+                DownloadSection(title: "Active Downloads", count: queue.active.count, clearLabel: "Cancel all", clear: queue.cancelAll) {
+                    ForEach(queue.active) { item in
+                        ActiveDownloadRow(item: item) { queue.cancel(item.id) }
+                    }
+                }
+            }
+            if !queue.queued.isEmpty {
+                DownloadSection(title: "Queue", count: queue.queued.count, clearLabel: "Clear queue", clear: queue.clearQueue) {
+                    ForEach(queue.queued) { item in
+                        QueuedDownloadRow(item: item) { queue.cancel(item.id) }
+                    }
+                }
+            }
+            if !queue.history.entries.isEmpty {
+                DownloadSection(title: "History", count: queue.history.entries.count, clearLabel: "Clear history", clear: queue.history.clear) {
+                    ForEach(queue.history.entries) { entry in
+                        HistoryRow(entry: entry) {
+                            queue.downloadAgain(entry, destination: settings.downloadFolder, transcriptLanguages: settings.transcriptRequest)
+                        } onRemove: {
+                            queue.history.remove(entry.id)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func submit() {
+        let accepted = queue.submit(
+            urlText: urlText,
+            destination: settings.downloadFolder,
+            transcriptLanguages: settings.transcriptRequest
+        )
+        if accepted { urlText = "" }
     }
 }

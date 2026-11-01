@@ -3,18 +3,30 @@ import Testing
 @testable import youtubedownload
 
 private struct IdleDownloader: VideoDownloading {
-    func download(_ video: YouTubeURL, to destination: URL) -> AsyncThrowingStream<DownloadEvent, Error> {
+    func download(_ request: DownloadRequest) -> AsyncThrowingStream<DownloadEvent, Error> {
         AsyncThrowingStream { _ in }
+    }
+
+    func playlistEntries(of playlist: YouTubePlaylistURL) async throws -> [PlaylistEntry] {
+        []
     }
 }
 
+/// Serialized because each test adds a real menu bar item, and a new item moves the others
+/// just as a popover may be trying to anchor to one.
 @MainActor
+@Suite(.serialized)
 struct StatusItemControllerTests {
-    private let downloads = DownloadStore(downloader: IdleDownloader())
+    private let queue: DownloadQueue
+
+    init() {
+        let historyFile = FileManager.default.temporaryDirectory.appending(path: "\(UUID().uuidString)/history.json")
+        queue = DownloadQueue(downloader: IdleDownloader(), history: HistoryStore(fileURL: historyFile))
+    }
 
     private func makeController() -> StatusItemController {
         let defaults = UserDefaults(suiteName: "StatusItemControllerTests.\(UUID().uuidString)")!
-        return StatusItemController(downloads: downloads, settings: SettingsStore(defaults: defaults), openSettings: {})
+        return StatusItemController(queue: queue, settings: SettingsStore(defaults: defaults), openSettings: {})
     }
 
     private func waitUntil(_ condition: () -> Bool) async throws {
@@ -40,30 +52,29 @@ struct StatusItemControllerTests {
         #expect(!controller.isPanelOpen)
     }
 
-    @Test("A result that arrived while closed survives opening, and closing clears it")
-    func resultIsClearedOnlyAfterBeingSeen() async throws {
+    @Test("Closing the panel forgets the input error")
+    func closingClearsInputError() async throws {
         let controller = makeController()
-        let failure = DownloadStore.Phase.failed("Enter a valid YouTube video URL.")
         try await Task.sleep(for: .seconds(1))
-        downloads.start(urlText: "not a url", destination: URL(filePath: "/tmp"))
+        _ = queue.submit(urlText: "not a url", destination: URL(filePath: "/tmp"), transcriptLanguages: nil)
 
         controller.togglePanel()
         try await waitUntil { controller.isPanelOpen }
-        #expect(downloads.phase == failure)
+        #expect(queue.inputError != nil)
 
         controller.togglePanel()
-        try await waitUntil { downloads.phase == .idle }
-        #expect(downloads.phase == .idle)
+        try await waitUntil { queue.inputError == nil }
+        #expect(queue.inputError == nil)
     }
 
     @Test("Opening the panel leaves a running download alone")
     func openingKeepsRunningDownload() {
         let controller = makeController()
-        downloads.start(urlText: "https://youtu.be/abc", destination: URL(filePath: "/tmp"))
+        _ = queue.submit(urlText: "https://youtu.be/abc", destination: URL(filePath: "/tmp"), transcriptLanguages: nil)
 
         controller.togglePanel()
 
-        #expect(downloads.isDownloading)
+        #expect(queue.isBusy)
     }
 
     @Test("The icon shows whether a download is running")

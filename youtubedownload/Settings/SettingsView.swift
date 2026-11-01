@@ -15,6 +15,16 @@ struct SettingsView: View {
                     Button("Choose…", action: chooseFolder)
                 }
             }
+
+            Section {
+                Toggle("Download transcripts", isOn: $settings.transcriptsEnabled)
+                TextField("Languages", text: $settings.transcriptLanguages, prompt: Text("en,es"))
+                    .disabled(!settings.transcriptsEnabled)
+            } footer: {
+                Text("Exact language codes separated by commas. Saved as subtitle files next to each video.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
         .frame(width: 480)
