@@ -1,0 +1,149 @@
+import AppKit
+import SwiftUI
+
+/// What the menu bar button shows for the current download state.
+nonisolated struct StatusItemLook: Equatable {
+    let symbolName: String
+    let accessibilityLabel: String
+
+    init(isDownloading: Bool) {
+        symbolName = isDownloading ? "arrow.down.circle.fill" : "arrow.down.circle"
+        accessibilityLabel = isDownloading ? "YouTube Downloader, downloading" : "YouTube Downloader"
+    }
+}
+
+/// Owns the menu bar button and the popover that points at it.
+/// A left click toggles the popover; a right click shows the context menu.
+final class StatusItemController: NSObject, NSPopoverDelegate {
+    private let downloads: DownloadStore
+    private let settings: SettingsStore
+    private let openSettings: () -> Void
+    private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+    private let popover = NSPopover()
+    private var outsideClickMonitor: Any?
+
+    var isPanelOpen: Bool {
+        popover.isShown
+    }
+
+    init(downloads: DownloadStore, settings: SettingsStore, openSettings: @escaping () -> Void) {
+        self.downloads = downloads
+        self.settings = settings
+        self.openSettings = openSettings
+        super.init()
+
+        statusItem.button?.target = self
+        statusItem.button?.action = #selector(handleClick(_:))
+        statusItem.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        // Not `.transient`: it closes the popover at once when a global shortcut opens it.
+        // Clicks outside are handled by `outsideClickMonitor` instead.
+        popover.behavior = .applicationDefined
+        popover.animates = true
+        popover.delegate = self
+        observeDownloads()
+    }
+
+    isolated deinit {
+        NSStatusBar.system.removeStatusItem(statusItem)
+    }
+
+    func togglePanel() {
+        guard let button = statusItem.button else { return }
+        if popover.isShown {
+            popover.performClose(nil)
+        } else {
+            // A fresh view resets the field and refocuses it on every opening.
+            downloads.clearResult()
+            popover.contentViewController = makePanelContent()
+            // A menu bar app is not active, and the text field needs key status.
+            // A global shortcut brings no activation of its own, so it has to be forced.
+            NSApp.activate(ignoringOtherApps: true)
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        }
+    }
+
+    func popoverDidShow(_ notification: Notification) {
+        popover.contentViewController?.view.window?.makeKey()
+        outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            self?.popover.performClose(nil)
+        }
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        if let outsideClickMonitor {
+            NSEvent.removeMonitor(outsideClickMonitor)
+        }
+        outsideClickMonitor = nil
+    }
+
+    private func makePanelContent() -> NSViewController {
+        let view = DownloadPanelView(
+            store: downloads,
+            settings: settings,
+            onOpenSettings: { [weak self] in self?.showSettingsFromPanel() },
+            onClose: { [weak self] in self?.popover.performClose(nil) }
+        )
+        let controller = NSHostingController(rootView: view)
+        controller.sizingOptions = [.preferredContentSize]
+        return controller
+    }
+
+    private func showSettingsFromPanel() {
+        popover.performClose(nil)
+        openSettings()
+    }
+
+    /// Redraws the button and re-arms itself for the next change.
+    private func observeDownloads() {
+        let isDownloading = withObservationTracking {
+            downloads.isDownloading
+        } onChange: { [weak self] in
+            // Called before the change lands; read the new value on the next turn.
+            Task { @MainActor in self?.observeDownloads() }
+        }
+
+        let look = StatusItemLook(isDownloading: isDownloading)
+        statusItem.button?.image = NSImage(
+            systemSymbolName: look.symbolName,
+            accessibilityDescription: look.accessibilityLabel
+        )
+        statusItem.button?.toolTip = look.accessibilityLabel
+    }
+
+    @objc private func handleClick(_ sender: NSStatusBarButton) {
+        if NSApp.currentEvent?.type == .rightMouseUp {
+            showContextMenu()
+        } else {
+            togglePanel()
+        }
+    }
+
+    /// Attaches the menu, triggers the button, then detaches it,
+    /// so the next left click reaches `handleClick` instead of opening the menu.
+    private func showContextMenu() {
+        if popover.isShown { popover.performClose(nil) }
+        statusItem.menu = makeContextMenu()
+        statusItem.button?.performClick(nil)
+        statusItem.menu = nil
+    }
+
+    private func makeContextMenu() -> NSMenu {
+        let menu = NSMenu()
+        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(performOpenSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
+        menu.addItem(.separator())
+        let quitItem = NSMenuItem(title: "Quit", action: #selector(performQuit), keyEquivalent: "q")
+        quitItem.target = self
+        menu.addItem(quitItem)
+        return menu
+    }
+
+    @objc private func performOpenSettings() {
+        openSettings()
+    }
+
+    @objc private func performQuit() {
+        NSApp.terminate(nil)
+    }
+}
