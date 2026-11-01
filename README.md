@@ -29,7 +29,7 @@ The app updates itself through Sparkle: right-click the menu bar icon and choose
 
 Accepted video URLs are `youtube.com/watch?v=…`, `youtu.be/…`, `/shorts/…`, `/live/…` and `/embed/…`. Accepted playlist URLs are `youtube.com/playlist?list=…`. A video URL that also names a playlist downloads only that video. Channel URLs are rejected.
 
-Transcript languages must be exact codes, such as `en,es`. A wildcard like `en.*` also matches every track auto-translated from English. For each language the app asks for both the `en-orig` and `en` tracks, because YouTube often answers HTTP 429 for the plain auto-caption track while `en-orig` works. A language can therefore produce two files, and some videos report a 429 for `en` while still saving `en-orig`.
+Transcript languages must be exact codes, such as `en,es`. A wildcard like `en.*` also matches every track auto-translated from English. For each language the app asks for both the `en-orig` and `en` tracks, because YouTube often answers HTTP 429 for the plain auto-caption track while `en-orig` works. When both download with identical text, only `en` is kept. A language can still produce two files when they differ, and a video may keep only `en-orig` when YouTube refuses `en`.
 
 History is stored in `~/Library/Application Support/com.juancasanueva.youtubedownload/history.json`.
 

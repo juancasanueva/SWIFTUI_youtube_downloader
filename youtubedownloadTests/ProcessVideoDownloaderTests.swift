@@ -191,6 +191,116 @@ struct ProcessVideoDownloaderTests {
         #expect(received.contains("-S res:720,"))
     }
 
+    /// Writes each file with the given text and logs it as yt-dlp does, in order.
+    private func transcriptScript(writing files: [(url: URL, text: String)]) -> String {
+        files.map { file in
+            """
+            printf '%s' '\(file.text)' > '\(file.url.path)'
+            echo '[info] Writing video subtitles to: \(file.url.path)'
+            """
+        }.joined(separator: "\n")
+    }
+
+    private func exists(_ url: URL) -> Bool {
+        FileManager.default.fileExists(atPath: url.path(percentEncoded: false))
+    }
+
+    @Test("Removes the -orig copy when it's identical to the plain track")
+    func removesIdenticalOriginal() async throws {
+        let directory = try makeScratchDirectory()
+        let original = directory.appending(path: "clip 1080p.en-orig.vtt")
+        let plain = directory.appending(path: "clip 1080p.en.vtt")
+        let downloader = try makeDownloader(transcriptScript: transcriptScript(writing: [
+            (original, "same text"), (plain, "same text"),
+        ]), in: directory)
+
+        #expect(try await events(from: downloader, languages: "en") == [
+            .fetchingTranscripts,
+            .transcript(plain),
+            .finished(file),
+        ])
+        #expect(!exists(original))
+        #expect(exists(plain))
+    }
+
+    @Test("Keeps both tracks when their text differs")
+    func keepsDifferentTracks() async throws {
+        let directory = try makeScratchDirectory()
+        let original = directory.appending(path: "clip.en-orig.vtt")
+        let plain = directory.appending(path: "clip.en.vtt")
+        let downloader = try makeDownloader(transcriptScript: transcriptScript(writing: [
+            (original, "original words"), (plain, "other words"),
+        ]), in: directory)
+
+        #expect(try await events(from: downloader, languages: "en") == [
+            .fetchingTranscripts,
+            .transcript(original),
+            .transcript(plain),
+            .finished(file),
+        ])
+        #expect(exists(original))
+        #expect(exists(plain))
+    }
+
+    @Test("Keeps an -orig track that has no plain twin")
+    func keepsLoneOriginal() async throws {
+        let directory = try makeScratchDirectory()
+        let original = directory.appending(path: "clip.en-orig.vtt")
+        let downloader = try makeDownloader(transcriptScript: """
+        \(transcriptScript(writing: [(original, "words")]))
+        echo '[info] Writing video subtitles to: \(directory.path)/clip.en.vtt'
+        echo "WARNING: Unable to download video subtitles for 'en': HTTP Error 429"
+        """, in: directory)
+
+        #expect(try await events(from: downloader, languages: "en") == [
+            .fetchingTranscripts,
+            .transcript(original),
+            .finished(file),
+        ])
+        #expect(exists(original))
+    }
+
+    @Test("Handles each language on its own")
+    func comparesWithinEachLanguage() async throws {
+        let directory = try makeScratchDirectory()
+        let englishOriginal = directory.appending(path: "clip.en-orig.vtt")
+        let english = directory.appending(path: "clip.en.vtt")
+        let spanishOriginal = directory.appending(path: "clip.es-orig.vtt")
+        let spanish = directory.appending(path: "clip.es.vtt")
+        let downloader = try makeDownloader(transcriptScript: transcriptScript(writing: [
+            (englishOriginal, "hello"), (spanishOriginal, "hola"), (english, "hello"), (spanish, "hola otra vez"),
+        ]), in: directory)
+
+        #expect(try await events(from: downloader, languages: "en,es") == [
+            .fetchingTranscripts,
+            .transcript(spanishOriginal),
+            .transcript(english),
+            .transcript(spanish),
+            .finished(file),
+        ])
+        #expect(!exists(englishOriginal))
+        #expect(exists(spanishOriginal))
+    }
+
+    @Test("Isn't fooled by a video title containing -orig")
+    func ignoresOrigInTitle() async throws {
+        let directory = try makeScratchDirectory()
+        let first = directory.appending(path: "the-orig.cut.en.vtt")
+        let second = directory.appending(path: "the.cut.en.vtt")
+        let downloader = try makeDownloader(transcriptScript: transcriptScript(writing: [
+            (first, "same text"), (second, "same text"),
+        ]), in: directory)
+
+        #expect(try await events(from: downloader, languages: "en") == [
+            .fetchingTranscripts,
+            .transcript(first),
+            .transcript(second),
+            .finished(file),
+        ])
+        #expect(exists(first))
+        #expect(exists(second))
+    }
+
     @Test("Keeps only subtitle files that exist")
     func ignoresMissingTranscripts() async throws {
         let directory = try makeScratchDirectory()

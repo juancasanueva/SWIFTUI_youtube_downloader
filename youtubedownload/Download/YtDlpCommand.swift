@@ -32,7 +32,8 @@ nonisolated enum YtDlpCommand {
     /// YouTube often answers HTTP 429 for plain auto-caption tracks such as `en`, while the same
     /// language's `en-orig` track downloads fine, so each language asks for both. Videos with only
     /// human-made subtitles have just the plain track. `--ignore-errors` stops one refused track
-    /// from aborting the rest, and reports it as a warning instead.
+    /// from aborting the rest, and reports it as a warning instead. Identical copies are removed
+    /// after the pass.
     ///
     /// Languages need exact codes: `en.*` also matches every track auto-translated from English.
     ///

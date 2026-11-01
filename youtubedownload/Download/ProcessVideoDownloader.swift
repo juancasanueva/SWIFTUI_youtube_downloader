@@ -127,7 +127,8 @@ nonisolated struct ProcessVideoDownloader: VideoDownloading {
         }
 
         // yt-dlp logs each path before fetching it, so a refused track has a line but no file.
-        let saved = written.filter { FileManager.default.fileExists(atPath: $0.path(percentEncoded: false)) }
+        let existing = written.filter { FileManager.default.fileExists(atPath: $0.path(percentEncoded: false)) }
+        let saved = removingDuplicateOriginals(from: existing)
         saved.forEach { continuation.yield(.transcript($0)) }
 
         // One saved language is a success. Only an empty result is worth reporting.
@@ -137,6 +138,34 @@ nonisolated struct ProcessVideoDownloader: VideoDownloading {
         } else if let lastWarning {
             continuation.yield(.transcriptsFailed(lastWarning))
         }
+    }
+
+    /// Each language asks for both `en-orig` and `en`, which are often the same text. Deletes the
+    /// `-orig` copy only when its bytes match a twin saved by this same pass, so no text is lost.
+    private func removingDuplicateOriginals(from files: [URL]) -> [URL] {
+        files.filter { file in
+            guard let twin = plainTwin(of: file), files.contains(twin) else { return true }
+
+            let manager = FileManager.default
+            let isDuplicate = manager.contentsEqual(
+                atPath: file.path(percentEncoded: false),
+                andPath: twin.path(percentEncoded: false)
+            )
+            guard isDuplicate, (try? manager.removeItem(at: file)) != nil else { return true }
+            return false
+        }
+    }
+
+    /// `clip.en-orig.vtt` to `clip.en.vtt`. Only the language part counts, not the video's title.
+    private func plainTwin(of file: URL) -> URL? {
+        let suffix = "-orig"
+        let name = file.deletingPathExtension()
+        let language = name.pathExtension
+        guard language.hasSuffix(suffix), language.count > suffix.count else { return nil }
+
+        return name.deletingPathExtension()
+            .appendingPathExtension(String(language.dropLast(suffix.count)))
+            .appendingPathExtension(file.pathExtension)
     }
 
     // MARK: - Process
