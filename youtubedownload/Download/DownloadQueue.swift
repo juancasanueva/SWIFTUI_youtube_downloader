@@ -23,6 +23,9 @@ final class DownloadQueue {
     private(set) var active: [Item] = []
     private(set) var queued: [Item] = []
     private(set) var inputError: String?
+    /// What's typed in the panel. It lives here because the panel's view is rebuilt on every
+    /// opening, and clicking elsewhere closes the panel.
+    var urlDraft = ""
 
     let history: HistoryStore
 
@@ -63,6 +66,18 @@ final class DownloadQueue {
     }
 
     /// The old entry stays until the new result replaces it, so cancelling the retry loses nothing.
+    /// Empties the field only when the URL was accepted, so a bad one can be corrected.
+    func submitDraft(destination: URL, transcriptLanguages: String?, quality: VideoQuality) -> Bool {
+        let accepted = submit(
+            urlText: urlDraft,
+            destination: destination,
+            transcriptLanguages: transcriptLanguages,
+            quality: quality
+        )
+        if accepted { urlDraft = "" }
+        return accepted
+    }
+
     func downloadAgain(_ entry: HistoryEntry, destination: URL, transcriptLanguages: String?, quality: VideoQuality) {
         inputError = nil
         guard let video = YouTubeURL(entry.video.absoluteString) else { return }

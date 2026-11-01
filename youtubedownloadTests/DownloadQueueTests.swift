@@ -163,6 +163,47 @@ struct DownloadQueueTests {
         #expect(queue.inputError == nil)
     }
 
+    // MARK: - Typed URL
+
+    private func submitDraft() -> Bool {
+        queue.submitDraft(destination: destination, transcriptLanguages: nil, quality: .p1080)
+    }
+
+    @Test("Starts with no typed URL")
+    func startsEmpty() {
+        #expect(queue.urlDraft.isEmpty)
+    }
+
+    @Test("Submitting the typed URL starts it and empties the field")
+    func submittingClearsDraft() {
+        queue.urlDraft = "https://youtu.be/a"
+
+        #expect(submitDraft())
+
+        #expect(queue.urlDraft.isEmpty)
+        #expect(downloader.startedVideos == [FakeDownloader.canonical("a")])
+    }
+
+    @Test("An invalid URL stays in the field to be corrected")
+    func invalidDraftStays() {
+        queue.urlDraft = "https://example.com"
+
+        #expect(!submitDraft())
+
+        #expect(queue.urlDraft == "https://example.com")
+        #expect(queue.inputError == "Enter a valid YouTube video or playlist URL.")
+    }
+
+    @Test("A duplicate URL stays in the field")
+    func duplicateDraftStays() {
+        submitVideos("a")
+        queue.urlDraft = "https://youtu.be/a"
+
+        #expect(!submitDraft())
+
+        #expect(queue.urlDraft == "https://youtu.be/a")
+    }
+
     // MARK: - Progress
 
     @Test("Shows each download's own title and progress")

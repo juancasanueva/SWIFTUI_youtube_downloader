@@ -20,7 +20,7 @@ The app updates itself through Sparkle: right-click the menu bar icon and choose
 - **Playlists:** paste a playlist URL and its videos go through the same slots.
 - **Transcripts:** subtitles are saved as `.vtt` files next to each video, including auto-generated ones. Turn this off or change the languages in Settings. If a language fails, the others and the video are kept.
 - **History:** the last 200 downloads are kept, so you can play them again, show them in Finder, open their transcript, or retry failures.
-- Downloads keep running after you close the panel. The menu bar icon fills in while the app is busy.
+- Downloads keep running after you close the panel, and a URL you were typing is still there when you reopen it. The menu bar icon fills in while the app is busy.
 - **Resolution:** choose Best, 1080p, 720p or 480p next to the URL field. The app remembers your choice, and a playlist's videos all use it. A video that doesn't reach that height downloads at the closest one.
 - Saves `.mp4` files, with the height in the name so each resolution gets its own file. 1080p and below prefer H.264/AAC, which plays in QuickTime. YouTube generally has no H.264 above 1080p, so Best can give AV1 or VP9, which QuickTime may not play.
 - Choose the download folder in Settings, from the panel's gear button or by right-clicking the icon. The default is `~/Downloads`.

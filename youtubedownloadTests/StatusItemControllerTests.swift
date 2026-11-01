@@ -67,6 +67,27 @@ struct StatusItemControllerTests {
         #expect(queue.inputError == nil)
     }
 
+    @Test("Closing and reopening the panel keeps the typed URL")
+    func reopeningKeepsTypedURL() async throws {
+        let controller = makeController()
+        try await Task.sleep(for: .seconds(1))
+        controller.togglePanel()
+        try await waitUntil { controller.isPanelOpen }
+
+        queue.urlDraft = "https://youtu.be/half-typed"
+
+        controller.togglePanel()
+        try await waitUntil { !controller.isPanelOpen }
+        #expect(queue.urlDraft == "https://youtu.be/half-typed")
+
+        controller.togglePanel()
+        try await waitUntil { controller.isPanelOpen }
+        #expect(queue.urlDraft == "https://youtu.be/half-typed")
+
+        controller.togglePanel()
+        try await waitUntil { !controller.isPanelOpen }
+    }
+
     @Test("Opening the panel leaves a running download alone")
     func openingKeepsRunningDownload() {
         let controller = makeController()

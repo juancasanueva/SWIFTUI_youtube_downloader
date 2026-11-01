@@ -55,7 +55,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         if popover.isShown {
             popover.performClose(nil)
         } else {
-            // A fresh view resets the field and refocuses it on every opening.
+            // A fresh view refocuses the field on every opening. What was typed lives in the queue.
             popover.contentViewController = makePanelContent()
             // A menu bar app is not active, and the text field needs key status.
             // A global shortcut brings no activation of its own, so it has to be forced.

@@ -1,12 +1,11 @@
 import SwiftUI
 
 struct DownloadPanelView: View {
-    let queue: DownloadQueue
+    @Bindable var queue: DownloadQueue
     @Bindable var settings: SettingsStore
     let onOpenSettings: () -> Void
     let onClose: () -> Void
 
-    @State private var urlText = ""
     @State private var listHeight: CGFloat = 0
     @FocusState private var isURLFieldFocused: Bool
 
@@ -31,7 +30,7 @@ struct DownloadPanelView: View {
 
     private var inputRow: some View {
         HStack {
-            TextField("YouTube video or playlist URL", text: $urlText)
+            TextField("YouTube video or playlist URL", text: $queue.urlDraft)
                 .textFieldStyle(.roundedBorder)
                 .focused($isURLFieldFocused)
                 .onSubmit(submit)
@@ -47,7 +46,7 @@ struct DownloadPanelView: View {
 
             Button("Download", action: submit)
                 .keyboardShortcut(.defaultAction)
-                .disabled(urlText.isEmpty)
+                .disabled(queue.urlDraft.isEmpty)
 
             Button("Settings", systemImage: "gearshape", action: onOpenSettings)
                 .labelStyle(.iconOnly)
@@ -107,12 +106,10 @@ struct DownloadPanelView: View {
     }
 
     private func submit() {
-        let accepted = queue.submit(
-            urlText: urlText,
+        _ = queue.submitDraft(
             destination: settings.downloadFolder,
             transcriptLanguages: settings.transcriptRequest,
             quality: settings.videoQuality
         )
-        if accepted { urlText = "" }
     }
 }
