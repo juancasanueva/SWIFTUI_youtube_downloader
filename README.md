@@ -2,6 +2,16 @@
 
 A small macOS menu bar app that downloads YouTube videos with [yt-dlp](https://github.com/yt-dlp/yt-dlp).
 
+## Install
+
+```sh
+brew install --cask juancasanueva/tap/youtube-downloader
+```
+
+This also installs `yt-dlp` and `ffmpeg`, which the app needs. Apple silicon and macOS 15.6 or later only.
+
+The app updates itself through Sparkle: right-click the menu bar icon and choose **Check for Updates…**, or turn on automatic checks in Settings.
+
 ## Features
 
 - Lives in the menu bar, with no Dock icon.
@@ -26,8 +36,8 @@ History is stored in `~/Library/Application Support/com.juancasanueva.youtubedow
 ## Requirements
 
 - macOS 15.6 or later
-- Xcode 27 to build
-- yt-dlp and ffmpeg. Homebrew's yt-dlp already brings the JavaScript runtime it needs (Deno), but not ffmpeg, and without ffmpeg downloads silently fall back to about 360p:
+- Xcode 26.6 or later to build
+- yt-dlp and ffmpeg. The cask installs both; when building from source, install them yourself. Homebrew's yt-dlp already brings the JavaScript runtime it needs (Deno), but not ffmpeg, and without ffmpeg downloads silently fall back to about 360p:
 
   ```sh
   brew install yt-dlp ffmpeg
@@ -49,6 +59,10 @@ Run the unit tests with:
 xcodebuild test -scheme youtubedownload -destination 'platform=macOS' -only-testing:youtubedownloadTests
 ```
 
+## Releasing
+
+Pushing a `v*` tag builds, notarizes and publishes a release. See [RELEASING.md](RELEASING.md).
+
 ## App Sandbox
 
 The App Sandbox is turned off because the app runs yt-dlp as a child process, and that process needs to reach Homebrew tools and write to any folder you pick. This also means the app can't be distributed through the Mac App Store as it stands.
@@ -59,7 +73,8 @@ The App Sandbox is turned off because the app runs yt-dlp as a child process, an
 youtubedownload/
 ├── App/        App wiring, the menu bar item and the global shortcut
 ├── Download/   URL validation, the yt-dlp integration, the queue, history and the panel
-└── Settings/   Download folder and transcript preferences, and the settings view
+├── Settings/   Preferences, launch at login, the yt-dlp check and the settings view
+└── Updates/    In-app updates, with Sparkle behind one adapter
 ```
 
 ## Responsible use
