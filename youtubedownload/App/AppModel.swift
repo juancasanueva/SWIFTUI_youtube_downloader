@@ -7,11 +7,14 @@ final class AppModel {
     private let settings = SettingsStore()
     private let queue = DownloadQueue(downloader: ProcessVideoDownloader(), history: HistoryStore())
 
+    private let launchAtLogin = LaunchAtLogin(service: MainAppLoginItem())
+
     private lazy var settingsWindow = makeSettingsWindow()
     private var statusItem: StatusItemController?
     private var hotKey: GlobalHotKey?
 
     init() {
+        launchAtLogin.applyDefault()
         statusItem = StatusItemController(queue: queue, settings: settings) { [weak self] in
             self?.showSettings()
         }
@@ -26,7 +29,7 @@ final class AppModel {
     }
 
     private func makeSettingsWindow() -> NSWindow {
-        let controller = NSHostingController(rootView: SettingsView(settings: settings))
+        let controller = NSHostingController(rootView: SettingsView(settings: settings, launchAtLogin: launchAtLogin))
         controller.sizingOptions = [.preferredContentSize]
         let window = NSWindow(contentViewController: controller)
         window.title = "Settings"

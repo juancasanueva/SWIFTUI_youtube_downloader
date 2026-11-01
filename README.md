@@ -14,6 +14,7 @@ A small macOS menu bar app that downloads YouTube videos with [yt-dlp](https://g
 - Saves H.264/AAC `.mp4` files, which play in QuickTime.
 - Choose the download folder in Settings, from the panel's gear button or by right-clicking the icon. The default is `~/Downloads`.
 - Right-click the icon to quit.
+- **Launch at Login:** on by default once the app is in `/Applications` or `~/Applications`, and only applied once, so turning it off in Settings sticks. Copies run from a build folder stay off unless you turn it on yourself.
 
 Accepted video URLs are `youtube.com/watch?v=…`, `youtu.be/…`, `/shorts/…`, `/live/…` and `/embed/…`. Accepted playlist URLs are `youtube.com/playlist?list=…`. A video URL that also names a playlist downloads only that video. Channel URLs are rejected.
 

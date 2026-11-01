@@ -1,11 +1,36 @@
 import AppKit
+import ServiceManagement
 import SwiftUI
 
 struct SettingsView: View {
     @Bindable var settings: SettingsStore
+    let launchAtLogin: LaunchAtLogin
+
+    private var launchAtLoginBinding: Binding<Bool> {
+        Binding(get: { launchAtLogin.isEnabled }, set: { launchAtLogin.setEnabled($0) })
+    }
 
     var body: some View {
         Form {
+            Section {
+                Toggle("Launch at Login", isOn: launchAtLoginBinding)
+
+                if launchAtLogin.needsApproval {
+                    LabeledContent("Allow it in System Settings to take effect.") {
+                        Button("Open Login Items") {
+                            SMAppService.openSystemSettingsLoginItems()
+                        }
+                    }
+                    .font(.caption)
+                }
+                if let error = launchAtLogin.errorMessage {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .textSelection(.enabled)
+                }
+            }
+
             LabeledContent("Download folder") {
                 HStack {
                     Text(settings.downloadFolder.path(percentEncoded: false))
@@ -29,6 +54,10 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .frame(width: 480)
         .fixedSize(horizontal: false, vertical: true)
+        .onAppear(perform: launchAtLogin.refreshStatus)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            launchAtLogin.refreshStatus()
+        }
     }
 
     private func chooseFolder() {
