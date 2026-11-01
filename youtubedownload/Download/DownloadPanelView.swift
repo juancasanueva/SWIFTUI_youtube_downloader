@@ -2,7 +2,7 @@ import SwiftUI
 
 struct DownloadPanelView: View {
     @Bindable var queue: DownloadQueue
-    @Bindable var settings: SettingsStore
+    let settings: SettingsStore
     let onOpenSettings: () -> Void
     let onClose: () -> Void
 
@@ -35,14 +35,14 @@ struct DownloadPanelView: View {
                 .focused($isURLFieldFocused)
                 .onSubmit(submit)
 
-            Picker("Resolution", selection: $settings.videoQuality) {
-                ForEach(VideoQuality.allCases) { quality in
-                    Text(quality.label).tag(quality)
+            Picker("Resolution", selection: $queue.qualityChoice) {
+                ForEach(QualityChoice.all) { choice in
+                    Text(choice.label).tag(choice)
                 }
             }
             .labelsHidden()
             .fixedSize()
-            .help("Resolution")
+            .help("Resolution. Default is \(settings.defaultVideoQuality.label), which you can change in Settings.")
 
             Button("Download", action: submit)
                 .keyboardShortcut(.defaultAction)
@@ -94,7 +94,7 @@ struct DownloadPanelView: View {
                                 entry,
                                 destination: settings.downloadFolder,
                                 transcriptLanguages: settings.transcriptRequest,
-                                quality: settings.videoQuality
+                                quality: queue.qualityChoice.resolved(default: settings.defaultVideoQuality)
                             )
                         } onRemove: {
                             queue.history.remove(entry.id)
@@ -109,7 +109,7 @@ struct DownloadPanelView: View {
         _ = queue.submitDraft(
             destination: settings.downloadFolder,
             transcriptLanguages: settings.transcriptRequest,
-            quality: settings.videoQuality
+            defaultQuality: settings.defaultVideoQuality
         )
     }
 }

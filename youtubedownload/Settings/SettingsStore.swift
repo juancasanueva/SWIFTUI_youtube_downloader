@@ -8,7 +8,8 @@ final class SettingsStore {
     private static let transcriptsEnabledKey = "transcriptsEnabled"
     private static let transcriptLanguagesKey = "transcriptLanguages"
     private static let defaultTranscriptLanguages = "en,es"
-    private static let videoQualityKey = "videoQuality"
+    /// A new key on purpose: older versions saved the panel's last pick under `videoQuality`.
+    private static let defaultVideoQualityKey = "defaultVideoQuality"
 
     // Each setting saves only real changes. Text fields and pickers can write back the same value
     // without any edit, and saving that would freeze a default the user never chose.
@@ -35,11 +36,11 @@ final class SettingsStore {
         }
     }
 
-    /// The resolution selected in the panel, remembered for next time.
-    var videoQuality: VideoQuality {
+    /// What the panel's Default choice downloads at.
+    var defaultVideoQuality: VideoQuality {
         didSet {
-            guard videoQuality != oldValue else { return }
-            defaults.set(videoQuality.rawValue, forKey: Self.videoQualityKey)
+            guard defaultVideoQuality != oldValue else { return }
+            defaults.set(defaultVideoQuality.rawValue, forKey: Self.defaultVideoQualityKey)
         }
     }
 
@@ -64,6 +65,6 @@ final class SettingsStore {
         }
         transcriptsEnabled = defaults.object(forKey: Self.transcriptsEnabledKey) as? Bool ?? true
         transcriptLanguages = defaults.string(forKey: Self.transcriptLanguagesKey) ?? Self.defaultTranscriptLanguages
-        videoQuality = defaults.string(forKey: Self.videoQualityKey).flatMap(VideoQuality.init) ?? .p1080
+        defaultVideoQuality = defaults.string(forKey: Self.defaultVideoQualityKey).flatMap(VideoQuality.init) ?? .p1080
     }
 }

@@ -37,6 +37,18 @@ struct SettingsView: View {
                 }
             }
 
+            Section {
+                Picker("Default resolution", selection: $settings.defaultVideoQuality) {
+                    ForEach(VideoQuality.allCases) { quality in
+                        Text(quality.label).tag(quality)
+                    }
+                }
+            } footer: {
+                Text("Downloads at this resolution, or the closest one below when a video doesn't have it.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             LabeledContent("Download folder") {
                 HStack {
                     Text(settings.downloadFolder.path(percentEncoded: false))

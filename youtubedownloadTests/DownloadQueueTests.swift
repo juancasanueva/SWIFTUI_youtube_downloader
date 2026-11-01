@@ -166,7 +166,7 @@ struct DownloadQueueTests {
     // MARK: - Typed URL
 
     private func submitDraft() -> Bool {
-        queue.submitDraft(destination: destination, transcriptLanguages: nil, quality: .p1080)
+        queue.submitDraft(destination: destination, transcriptLanguages: nil, defaultQuality: .p1080)
     }
 
     @Test("Starts with no typed URL")
@@ -202,6 +202,63 @@ struct DownloadQueueTests {
         #expect(!submitDraft())
 
         #expect(queue.urlDraft == "https://youtu.be/a")
+    }
+
+    // MARK: - Resolution choice
+
+    @Test("Starts on Default")
+    func startsOnDefault() {
+        #expect(queue.qualityChoice == .useDefault)
+    }
+
+    @Test("Default downloads at the resolution set in Settings", arguments: [VideoQuality.best, .p1080, .p720, .p480])
+    func defaultUsesSetting(setting: VideoQuality) throws {
+        queue.urlDraft = "https://youtu.be/a"
+
+        _ = queue.submitDraft(destination: destination, transcriptLanguages: nil, defaultQuality: setting)
+
+        #expect(try #require(downloader.requests.first).quality == setting)
+    }
+
+    @Test("A specific choice wins over the setting", arguments: [VideoQuality.best, .p1080, .p720, .p480])
+    func specificChoiceWins(choice: VideoQuality) throws {
+        queue.urlDraft = "https://youtu.be/a"
+        queue.qualityChoice = .specific(choice)
+
+        _ = queue.submitDraft(destination: destination, transcriptLanguages: nil, defaultQuality: .p480 == choice ? .p720 : .p480)
+
+        #expect(try #require(downloader.requests.first).quality == choice)
+    }
+
+    @Test("A specific choice applies to one download, then it's back to Default")
+    func choiceResetsAfterDownload() {
+        queue.urlDraft = "https://youtu.be/a"
+        queue.qualityChoice = .specific(.best)
+
+        #expect(submitDraft())
+
+        #expect(queue.qualityChoice == .useDefault)
+    }
+
+    @Test("A rejected URL keeps the choice, so correcting it doesn't lose it")
+    func choiceSurvivesRejection() {
+        queue.urlDraft = "https://example.com"
+        queue.qualityChoice = .specific(.p480)
+
+        #expect(!submitDraft())
+
+        #expect(queue.qualityChoice == .specific(.p480))
+    }
+
+    @Test("A playlist's videos use the chosen resolution, resolved from Default")
+    func playlistResolvesDefault() async {
+        downloader.playlistResult = .success(entries("a", "b"))
+        queue.urlDraft = playlistURL
+
+        _ = queue.submitDraft(destination: destination, transcriptLanguages: nil, defaultQuality: .p720)
+        await waitUntil { queue.active.count == 2 }
+
+        #expect(downloader.requests.map(\.quality) == [.p720, .p720])
     }
 
     // MARK: - Progress
@@ -584,23 +641,32 @@ struct SettingsStoreTests {
         #expect(store.transcriptRequest == "en,es")
     }
 
-    @Test("Starts at 1080p, then remembers the last resolution")
-    func remembersQuality() {
+    @Test("The default resolution starts at 1080p and persists")
+    func remembersDefaultQuality() {
         let defaults = makeDefaults()
         let store = SettingsStore(defaults: defaults)
-        #expect(store.videoQuality == .p1080)
+        #expect(store.defaultVideoQuality == .p1080)
 
-        store.videoQuality = .p480
+        store.defaultVideoQuality = .p480
 
-        #expect(SettingsStore(defaults: defaults).videoQuality == .p480)
+        #expect(SettingsStore(defaults: defaults).defaultVideoQuality == .p480)
     }
 
     @Test("Falls back to 1080p for an unrecognized saved resolution")
     func ignoresUnknownQuality() {
         let defaults = makeDefaults()
-        defaults.set("8k", forKey: "videoQuality")
+        defaults.set("8k", forKey: "defaultVideoQuality")
 
-        #expect(SettingsStore(defaults: defaults).videoQuality == .p1080)
+        #expect(SettingsStore(defaults: defaults).defaultVideoQuality == .p1080)
+    }
+
+    /// The old value was the panel's last pick, not a choice of default.
+    @Test("Doesn't turn the panel's last pick from older versions into the default")
+    func ignoresOldLastPick() {
+        let defaults = makeDefaults()
+        defaults.set("best", forKey: "videoQuality")
+
+        #expect(SettingsStore(defaults: defaults).defaultVideoQuality == .p1080)
     }
 
     @Test("Showing a default doesn't save it, so a new default still applies later")

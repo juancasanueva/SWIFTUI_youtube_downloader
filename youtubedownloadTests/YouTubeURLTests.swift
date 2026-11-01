@@ -214,6 +214,19 @@ struct YtDlpCommandTests {
     }
 }
 
+struct QualityChoiceTests {
+    @Test("The picker offers Default first, then each resolution")
+    func listsChoices() {
+        #expect(QualityChoice.all.map(\.label) == ["Default", "Best", "1080p", "720p", "480p"])
+    }
+
+    @Test("Default resolves to the setting, and a specific choice to itself")
+    func resolves() {
+        #expect(QualityChoice.useDefault.resolved(default: .p720) == .p720)
+        #expect(QualityChoice.specific(.best).resolved(default: .p720) == .best)
+    }
+}
+
 struct YtDlpOutputLineTests {
     @Test("Reads progress as a 0...1 fraction with speed and time remaining")
     func parsesProgress() {

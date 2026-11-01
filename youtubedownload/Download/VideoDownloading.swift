@@ -13,6 +13,30 @@ nonisolated enum VideoQuality: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
+/// What the panel's picker offers: the resolution set in Settings, or one for this download.
+nonisolated enum QualityChoice: Hashable, Identifiable, Sendable {
+    case useDefault
+    case specific(VideoQuality)
+
+    static let all: [QualityChoice] = [.useDefault] + VideoQuality.allCases.map(QualityChoice.specific)
+
+    var id: Self { self }
+
+    var label: String {
+        switch self {
+        case .useDefault: "Default"
+        case .specific(let quality): quality.label
+        }
+    }
+
+    func resolved(default defaultQuality: VideoQuality) -> VideoQuality {
+        switch self {
+        case .useDefault: defaultQuality
+        case .specific(let quality): quality
+        }
+    }
+}
+
 nonisolated struct DownloadRequest: Equatable, Sendable {
     let video: YouTubeURL
     let destination: URL

@@ -26,6 +26,8 @@ final class DownloadQueue {
     /// What's typed in the panel. It lives here because the panel's view is rebuilt on every
     /// opening, and clicking elsewhere closes the panel.
     var urlDraft = ""
+    /// Applies to one download, then goes back to Default.
+    var qualityChoice = QualityChoice.useDefault
 
     let history: HistoryStore
 
@@ -66,15 +68,18 @@ final class DownloadQueue {
     }
 
     /// The old entry stays until the new result replaces it, so cancelling the retry loses nothing.
-    /// Empties the field only when the URL was accepted, so a bad one can be corrected.
-    func submitDraft(destination: URL, transcriptLanguages: String?, quality: VideoQuality) -> Bool {
+    /// Resets the field and the choice only when the URL was accepted, so a bad one can be corrected.
+    func submitDraft(destination: URL, transcriptLanguages: String?, defaultQuality: VideoQuality) -> Bool {
         let accepted = submit(
             urlText: urlDraft,
             destination: destination,
             transcriptLanguages: transcriptLanguages,
-            quality: quality
+            quality: qualityChoice.resolved(default: defaultQuality)
         )
-        if accepted { urlDraft = "" }
+        if accepted {
+            urlDraft = ""
+            qualityChoice = .useDefault
+        }
         return accepted
     }
 
