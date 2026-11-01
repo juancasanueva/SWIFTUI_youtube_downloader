@@ -6,13 +6,20 @@ A small macOS menu bar app that downloads YouTube videos with [yt-dlp](https://g
 
 - Lives in the menu bar, with no Dock icon.
 - Click the icon, or press the global shortcut `⌥⇧D` (Option + Shift + D), to open a panel that points at the icon.
-- Paste a video URL, press Return, and follow the progress. You can cancel at any time.
-- Downloads keep running after you close the panel. The menu bar icon fills in while one is active.
+- **Parallel downloads:** up to three videos download at once, each with its own progress bar, speed and time remaining. Extras wait in a queue and start as slots free up.
+- **Playlists:** paste a playlist URL and its videos go through the same slots.
+- **Transcripts:** subtitles are saved as `.vtt` files next to each video, including auto-generated ones. Turn this off or change the languages in Settings. If a language fails, the others and the video are kept.
+- **History:** the last 200 downloads are kept, so you can play them again, show them in Finder, open their transcript, or retry failures.
+- Downloads keep running after you close the panel. The menu bar icon fills in while the app is busy.
 - Saves H.264/AAC `.mp4` files, which play in QuickTime.
 - Choose the download folder in Settings, from the panel's gear button or by right-clicking the icon. The default is `~/Downloads`.
 - Right-click the icon to quit.
 
-Accepted URLs are single videos: `youtube.com/watch?v=…`, `youtu.be/…`, `/shorts/…`, `/live/…` and `/embed/…`. Only the video is downloaded when the URL also names a playlist. Playlist and channel URLs are rejected.
+Accepted video URLs are `youtube.com/watch?v=…`, `youtu.be/…`, `/shorts/…`, `/live/…` and `/embed/…`. Accepted playlist URLs are `youtube.com/playlist?list=…`. A video URL that also names a playlist downloads only that video. Channel URLs are rejected.
+
+Transcript languages must be exact codes, such as `en,es`. A wildcard like `en.*` also matches every track auto-translated from English. For each language the app asks for both the `en-orig` and `en` tracks, because YouTube often answers HTTP 429 for the plain auto-caption track while `en-orig` works. A language can therefore produce two files, and some videos report a 429 for `en` while still saving `en-orig`.
+
+History is stored in `~/Library/Application Support/com.juancasanueva.youtubedownload/history.json`.
 
 ## Requirements
 
@@ -49,8 +56,8 @@ The App Sandbox is turned off because the app runs yt-dlp as a child process, an
 ```
 youtubedownload/
 ├── App/        App wiring, the menu bar item and the global shortcut
-├── Download/   URL validation, the yt-dlp integration, download state and the panel
-└── Settings/   Download folder preference and the settings view
+├── Download/   URL validation, the yt-dlp integration, the queue, history and the panel
+└── Settings/   Download folder and transcript preferences, and the settings view
 ```
 
 ## Responsible use
