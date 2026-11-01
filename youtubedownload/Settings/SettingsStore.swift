@@ -7,6 +7,7 @@ final class SettingsStore {
     private static let downloadFolderKey = "downloadFolderPath"
     private static let transcriptsEnabledKey = "transcriptsEnabled"
     private static let transcriptLanguagesKey = "transcriptLanguages"
+    private static let defaultTranscriptLanguages = "en,es"
 
     var downloadFolder: URL {
         didSet {
@@ -39,7 +40,7 @@ final class SettingsStore {
         return languages.isEmpty ? nil : languages.joined(separator: ",")
     }
 
-    init(defaults: UserDefaults = .standard, locale: Locale = .current) {
+    init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         if let path = defaults.string(forKey: Self.downloadFolderKey) {
             downloadFolder = URL(filePath: path, directoryHint: .isDirectory)
@@ -47,14 +48,6 @@ final class SettingsStore {
             downloadFolder = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
         }
         transcriptsEnabled = defaults.object(forKey: Self.transcriptsEnabledKey) as? Bool ?? true
-        transcriptLanguages = defaults.string(forKey: Self.transcriptLanguagesKey)
-            ?? Self.defaultTranscriptLanguages(for: locale)
-    }
-
-    private static func defaultTranscriptLanguages(for locale: Locale) -> String {
-        guard let code = locale.language.languageCode?.identifier, code != "en" else {
-            return "en"
-        }
-        return "en,\(code)"
+        transcriptLanguages = defaults.string(forKey: Self.transcriptLanguagesKey) ?? Self.defaultTranscriptLanguages
     }
 }

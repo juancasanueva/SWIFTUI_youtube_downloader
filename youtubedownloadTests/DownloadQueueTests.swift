@@ -499,20 +499,13 @@ struct SettingsStoreTests {
         #expect(SettingsStore(defaults: defaults).downloadFolder == folder)
     }
 
-    @Test("Transcripts are on by default, in English and the system language")
+    @Test("Transcripts are on by default, in English and Spanish")
     func defaultsTranscripts() {
-        let store = SettingsStore(defaults: makeDefaults(), locale: Locale(identifier: "es_ES"))
+        let store = SettingsStore(defaults: makeDefaults())
 
         #expect(store.transcriptsEnabled)
         #expect(store.transcriptLanguages == "en,es")
         #expect(store.transcriptRequest == "en,es")
-    }
-
-    @Test("Doesn't repeat English when that's the system language")
-    func defaultsTranscriptsInEnglish() {
-        let store = SettingsStore(defaults: makeDefaults(), locale: Locale(identifier: "en_GB"))
-
-        #expect(store.transcriptLanguages == "en")
     }
 
     @Test("Persists transcript choices across launches")
