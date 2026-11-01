@@ -45,6 +45,15 @@ nonisolated struct ProcessVideoDownloader: VideoDownloading {
         return entries
     }
 
+    /// The version of the copy that runs, or `nil` if it's missing or broken.
+    func installedVersion() async -> String? {
+        var version: String?
+        let status = try? await run(arguments: ["--version"]) { line in
+            if version == nil, let parsed = YtDlpVersion(line) { version = parsed.text }
+        }
+        return status == 0 ? version : nil
+    }
+
     // MARK: - Passes
 
     private func perform(
@@ -80,7 +89,7 @@ nonisolated struct ProcessVideoDownloader: VideoDownloading {
         }
 
         guard status == 0 else {
-            throw DownloadError.failed(lastError ?? Self.exitMessage(status))
+            throw DownloadError.failed(withUpdateHint(lastError ?? Self.exitMessage(status)))
         }
         return file
     }
@@ -171,6 +180,12 @@ nonisolated struct ProcessVideoDownloader: VideoDownloading {
         } onCancel: {
             if process.isRunning { process.terminate() }
         }
+    }
+
+    /// YouTube answers 403 to the old versions it has broken, and nothing in the error says so.
+    private func withUpdateHint(_ message: String) -> String {
+        guard message.contains("HTTP Error 403") else { return message }
+        return "\(message). Try updating yt-dlp: \(YtDlpStatus.updateCommand(for: locateExecutable()))"
     }
 
     func locateExecutable() -> URL? {

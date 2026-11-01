@@ -43,7 +43,7 @@ History is stored in `~/Library/Application Support/com.juancasanueva.youtubedow
   brew install yt-dlp ffmpeg
   ```
 
-The app looks for `yt-dlp` in `/opt/homebrew/bin`, `/usr/local/bin`, `/opt/local/bin` and `~/.local/bin`. Settings shows whether it was found, with the install command if it wasn't, and checks again each time you return to the app.
+The app looks for `yt-dlp` in `/opt/homebrew/bin`, `/usr/local/bin`, `/opt/local/bin` and `~/.local/bin`. Settings shows whether it was found, with the install command if it wasn't, and warns when it's more than 90 days old, because YouTube keeps breaking old versions. It checks again each time you return to the app. A download refused with HTTP 403 also suggests updating `yt-dlp`.
 
 ## Build and run
 

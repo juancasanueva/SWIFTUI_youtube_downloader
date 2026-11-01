@@ -55,6 +55,52 @@ struct ProcessVideoDownloaderTests {
         }
     }
 
+    @Test("A 403 suggests updating yt-dlp, with the command for this copy")
+    func hintsAt403() async throws {
+        let downloader = try makeDownloader(script: """
+        echo 'ERROR: unable to download video data: HTTP Error 403: Forbidden' >&2
+        exit 1
+        """)
+
+        await #expect(throws: DownloadError.failed(
+            "unable to download video data: HTTP Error 403: Forbidden. "
+                + "Try updating yt-dlp: brew install yt-dlp && brew link --overwrite yt-dlp"
+        )) {
+            for try await _ in downloader.download(request()) {}
+        }
+    }
+
+    @Test("Other errors get no update hint", arguments: [
+        "This video is unavailable",
+        "unable to download video data: HTTP Error 404: Not Found",
+        "Video 4030 is private",
+    ])
+    func noHintForOtherErrors(message: String) async throws {
+        let downloader = try makeDownloader(script: """
+        echo 'ERROR: \(message)' >&2
+        exit 1
+        """)
+
+        await #expect(throws: DownloadError.failed(message)) {
+            for try await _ in downloader.download(request()) {}
+        }
+    }
+
+    @Test("A 403 on a transcript stays a transcript problem, with no update hint")
+    func noHintForTranscripts() async throws {
+        let directory = try makeScratchDirectory()
+        let downloader = try makeDownloader(transcriptScript: """
+        echo 'ERROR: Unable to download video subtitles: HTTP Error 403: Forbidden'
+        exit 1
+        """, in: directory)
+
+        #expect(try await events(from: downloader, languages: "en") == [
+            .fetchingTranscripts,
+            .transcriptsFailed("Unable to download video subtitles: HTTP Error 403: Forbidden"),
+            .finished(file),
+        ])
+    }
+
     @Test("Reports the exit code when yt-dlp fails silently")
     func reportsExitCode() async throws {
         let downloader = try makeDownloader(script: "exit 3")

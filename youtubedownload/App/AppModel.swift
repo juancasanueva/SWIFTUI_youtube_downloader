@@ -8,7 +8,10 @@ final class AppModel {
     private let queue = DownloadQueue(downloader: ProcessVideoDownloader(), history: HistoryStore())
 
     private let launchAtLogin = LaunchAtLogin(service: MainAppLoginItem())
-    private let ytDlp = YtDlpStatus(locate: ProcessVideoDownloader().locateExecutable)
+    private let ytDlp = YtDlpStatus(
+        locate: ProcessVideoDownloader().locateExecutable,
+        readVersion: { await ProcessVideoDownloader().installedVersion() }
+    )
     /// `nil` in the unit-test host, which must never reach Sparkle or the network.
     private let updater: (any AppUpdating)? = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
         ? SparkleUpdateChecker(automaticChecks: AutomaticUpdateChecks())

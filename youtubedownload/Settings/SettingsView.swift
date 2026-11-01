@@ -74,6 +74,7 @@ struct SettingsView: View {
     private func refreshSystemState() {
         launchAtLogin.refreshStatus()
         ytDlp.refresh()
+        Task { await ytDlp.refreshVersion() }
     }
 
     private func chooseFolder() {

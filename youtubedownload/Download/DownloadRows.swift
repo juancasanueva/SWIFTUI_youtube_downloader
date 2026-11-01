@@ -106,7 +106,7 @@ struct HistoryRow: View {
                 Text(caption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                    .lineLimit(3)
                     .help(caption)
             }
 
