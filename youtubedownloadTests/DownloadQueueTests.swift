@@ -562,6 +562,17 @@ struct SettingsStoreTests {
         #expect(SettingsStore(defaults: defaults).videoQuality == .p1080)
     }
 
+    @Test("Showing a default doesn't save it, so a new default still applies later")
+    func unchangedValuesAreNotSaved() {
+        let defaults = makeDefaults()
+        let store = SettingsStore(defaults: defaults)
+
+        // What a text field does when it gets or loses focus without any edit.
+        store.transcriptLanguages = store.transcriptLanguages
+
+        #expect(defaults.object(forKey: "transcriptLanguages") == nil)
+    }
+
     @Test("Persists transcript choices across launches")
     func persistsTranscripts() {
         let defaults = makeDefaults()

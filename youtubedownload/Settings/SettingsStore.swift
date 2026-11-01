@@ -10,14 +10,19 @@ final class SettingsStore {
     private static let defaultTranscriptLanguages = "en,es"
     private static let videoQualityKey = "videoQuality"
 
+    // Each setting saves only real changes. Text fields and pickers can write back the same value
+    // without any edit, and saving that would freeze a default the user never chose.
+
     var downloadFolder: URL {
         didSet {
+            guard downloadFolder != oldValue else { return }
             defaults.set(downloadFolder.path(percentEncoded: false), forKey: Self.downloadFolderKey)
         }
     }
 
     var transcriptsEnabled: Bool {
         didSet {
+            guard transcriptsEnabled != oldValue else { return }
             defaults.set(transcriptsEnabled, forKey: Self.transcriptsEnabledKey)
         }
     }
@@ -25,6 +30,7 @@ final class SettingsStore {
     /// Comma-separated language codes, as typed in Settings.
     var transcriptLanguages: String {
         didSet {
+            guard transcriptLanguages != oldValue else { return }
             defaults.set(transcriptLanguages, forKey: Self.transcriptLanguagesKey)
         }
     }
@@ -32,6 +38,7 @@ final class SettingsStore {
     /// The resolution selected in the panel, remembered for next time.
     var videoQuality: VideoQuality {
         didSet {
+            guard videoQuality != oldValue else { return }
             defaults.set(videoQuality.rawValue, forKey: Self.videoQualityKey)
         }
     }
