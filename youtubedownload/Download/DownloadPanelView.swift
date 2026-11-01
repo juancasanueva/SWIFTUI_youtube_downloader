@@ -59,12 +59,6 @@ struct DownloadPanelView: View {
             Text("Reading playlist…")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-        } else {
-            Text("Saves to \(settings.downloadFolder.path(percentEncoded: false))")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.middle)
         }
     }
 
