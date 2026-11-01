@@ -9,7 +9,7 @@ struct ProcessVideoDownloaderTests {
     private let file = URL(filePath: "/tmp/videos/clip.mp4")
 
     private func request(languages: String? = nil) -> DownloadRequest {
-        DownloadRequest(video: video, destination: destination, transcriptLanguages: languages)
+        DownloadRequest(video: video, destination: destination, transcriptLanguages: languages, quality: .p720)
     }
 
     private func events(from downloader: ProcessVideoDownloader, languages: String? = nil) async throws -> [DownloadEvent] {
@@ -115,6 +115,34 @@ struct ProcessVideoDownloaderTests {
             .transcript(transcript),
             .finished(file),
         ])
+    }
+
+    @Test("Names transcripts after the video that was actually saved")
+    func namesTranscriptsAfterVideo() async throws {
+        let directory = try makeScratchDirectory()
+        let arguments = directory.appending(path: "arguments")
+        let downloader = try makeDownloader(transcriptScript: """
+        echo "$*" > '\(arguments.path)'
+        """, in: directory)
+
+        _ = try await events(from: downloader, languages: "en")
+
+        let received = try String(contentsOf: arguments, encoding: .utf8)
+        #expect(received.contains("-o clip.%(ext)s"))
+    }
+
+    @Test("Passes the chosen resolution to yt-dlp")
+    func passesQuality() async throws {
+        let directory = try makeScratchDirectory()
+        let arguments = directory.appending(path: "arguments")
+        let downloader = try makeDownloader(script: """
+        echo "$*" > '\(arguments.path)'
+        """, in: directory)
+
+        _ = try await events(from: downloader)
+
+        let received = try String(contentsOf: arguments, encoding: .utf8)
+        #expect(received.contains("-S res:720,"))
     }
 
     @Test("Keeps only subtitle files that exist")

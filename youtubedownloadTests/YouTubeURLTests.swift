@@ -82,12 +82,17 @@ struct YouTubePlaylistURLTests {
 struct YtDlpCommandTests {
     private let destination = URL(filePath: "/tmp/My Videos", directoryHint: .isDirectory)
 
+    private func videoArguments(_ quality: VideoQuality) throws -> [String] {
+        let video = try #require(YouTubeURL("https://youtu.be/abc"))
+        return YtDlpCommand.videoArguments(for: video, destination: destination, quality: quality)
+    }
+
     @Test("Builds arguments that download one mp4 into the destination")
     func buildsVideoArguments() throws {
-        let video = try #require(YouTubeURL("https://youtu.be/abc"))
-
-        #expect(YtDlpCommand.videoArguments(for: video, destination: destination) == [
-            "-t", "mp4",
+        #expect(try videoArguments(.p720) == [
+            "--merge-output-format", "mp4",
+            "--remux-video", "mp4",
+            "-S", "res:720,vcodec:h264,lang,quality,fps,hdr:12,acodec:aac",
             "--no-playlist",
             "--newline",
             "--progress",
@@ -97,17 +102,38 @@ struct YtDlpCommandTests {
             "--print", "after_move:file=%(filepath)s",
             "--progress-template", "download:progress=%(progress._percent)s\t%(progress._speed_str)s\t%(progress._eta_str)s",
             "-P", "/tmp/My Videos/",
-            "-o", "%(title)s [%(id)s].%(ext)s",
+            "-o", "%(title)s [%(id)s] %(height)sp.%(ext)s",
             "--",
             "https://www.youtube.com/watch?v=abc",
         ])
     }
 
-    @Test("Builds arguments that fetch only subtitles, named after the video")
-    func buildsTranscriptArguments() throws {
-        let video = try #require(YouTubeURL("https://youtu.be/abc"))
+    @Test("Each resolution caps the height and keeps preferring H.264", arguments: [
+        (VideoQuality.p1080, "res:1080,vcodec:h264,lang,quality,fps,hdr:12,acodec:aac"),
+        (VideoQuality.p720, "res:720,vcodec:h264,lang,quality,fps,hdr:12,acodec:aac"),
+        (VideoQuality.p480, "res:480,vcodec:h264,lang,quality,fps,hdr:12,acodec:aac"),
+    ])
+    func capsResolution(quality: VideoQuality, sort: String) throws {
+        let arguments = try videoArguments(quality)
+        #expect(arguments[arguments.firstIndex(of: "-S")! + 1] == sort)
+    }
 
-        #expect(YtDlpCommand.transcriptArguments(for: video, destination: destination, languages: "en,es") == [
+    @Test("Best goes for the highest resolution in any video codec")
+    func bestIgnoresCodecPreference() throws {
+        let arguments = try videoArguments(.best)
+        #expect(arguments[arguments.firstIndex(of: "-S")! + 1] == "res,fps,hdr:12,acodec:aac")
+    }
+
+    private func transcriptArguments(videoFile: URL?) throws -> [String] {
+        let video = try #require(YouTubeURL("https://youtu.be/abc"))
+        return YtDlpCommand.transcriptArguments(for: video, destination: destination, languages: "en,es", videoFile: videoFile)
+    }
+
+    @Test("Builds arguments that fetch only subtitles, named after the saved video")
+    func buildsTranscriptArguments() throws {
+        let file = URL(filePath: "/tmp/My Videos/Clip [abc] 720p.mp4")
+
+        #expect(try transcriptArguments(videoFile: file) == [
             "--no-playlist",
             "--skip-download",
             "--write-subs",
@@ -116,10 +142,24 @@ struct YtDlpCommandTests {
             "--sub-langs", "en-orig,es-orig,en,es",
             "--sub-format", "vtt/best",
             "-P", "/tmp/My Videos/",
-            "-o", "%(title)s [%(id)s].%(ext)s",
+            "-o", "Clip [abc] 720p.%(ext)s",
             "--",
             "https://www.youtube.com/watch?v=abc",
         ])
+    }
+
+    @Test("Escapes a percent sign in the video's name, so it isn't read as a template")
+    func escapesPercentInName() throws {
+        let arguments = try transcriptArguments(videoFile: URL(filePath: "/tmp/100% real.mp4"))
+
+        #expect(arguments[arguments.firstIndex(of: "-o")! + 1] == "100%% real.%(ext)s")
+    }
+
+    @Test("Falls back to a name from the video's details when the file is unknown")
+    func namesTranscriptsWithoutFile() throws {
+        let arguments = try transcriptArguments(videoFile: nil)
+
+        #expect(arguments[arguments.firstIndex(of: "-o")! + 1] == "%(title)s [%(id)s].%(ext)s")
     }
 
     @Test("Builds arguments that list a playlist without downloading it")

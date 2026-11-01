@@ -67,8 +67,8 @@ struct DownloadQueueTests {
         queue = DownloadQueue(downloader: downloader, history: history)
     }
 
-    private func submit(_ text: String, languages: String? = nil) -> Bool {
-        queue.submit(urlText: text, destination: destination, transcriptLanguages: languages)
+    private func submit(_ text: String, languages: String? = nil, quality: VideoQuality = .p1080) -> Bool {
+        queue.submit(urlText: text, destination: destination, transcriptLanguages: languages, quality: quality)
     }
 
     private func submitVideos(_ ids: String...) {
@@ -114,13 +114,27 @@ struct DownloadQueueTests {
         #expect(downloader.startedVideos.last == FakeDownloader.canonical("d"))
     }
 
-    @Test("Passes the folder and transcript languages chosen when it was added")
+    @Test("Passes the folder, transcript languages and resolution chosen when it was added")
     func passesRequestDetails() throws {
-        _ = submit("https://youtu.be/a", languages: "en,es")
+        _ = submit("https://youtu.be/a", languages: "en,es", quality: .p480)
 
         let request = try #require(downloader.requests.first)
         #expect(request.destination == destination)
         #expect(request.transcriptLanguages == "en,es")
+        #expect(request.quality == .p480)
+    }
+
+    @Test("A queued download keeps the resolution chosen when it was added")
+    func queuedKeepsQuality() async {
+        _ = submit("https://youtu.be/a", quality: .p1080)
+        _ = submit("https://youtu.be/b", quality: .p1080)
+        _ = submit("https://youtu.be/c", quality: .p1080)
+        _ = submit("https://youtu.be/d", quality: .best)
+
+        downloader.finish("a", file: file)
+        await waitUntil { downloader.requests.count == 4 }
+
+        #expect(downloader.requests.last?.quality == .best)
     }
 
     @Test("Refuses a video that is already running or queued")
@@ -283,7 +297,7 @@ struct DownloadQueueTests {
         await waitUntil { queue.active.isEmpty }
         let entry = try #require(history.entries.first)
 
-        queue.downloadAgain(entry, destination: destination, transcriptLanguages: nil)
+        queue.downloadAgain(entry, destination: destination, transcriptLanguages: nil, quality: .p1080)
 
         #expect(history.entries == [entry])
         #expect(queue.active.map(\.video.url) == [entry.video])
@@ -303,7 +317,7 @@ struct DownloadQueueTests {
         await waitUntil { queue.active.isEmpty }
         let entry = try #require(history.entries.first)
 
-        queue.downloadAgain(entry, destination: destination, transcriptLanguages: nil)
+        queue.downloadAgain(entry, destination: destination, transcriptLanguages: nil, quality: .p1080)
         queue.cancel(try #require(queue.active.first).id)
 
         #expect(history.entries == [entry])
@@ -317,11 +331,22 @@ struct DownloadQueueTests {
         let entry = try #require(history.entries.first)
         submitVideos("a")
 
-        queue.downloadAgain(entry, destination: destination, transcriptLanguages: nil)
+        queue.downloadAgain(entry, destination: destination, transcriptLanguages: nil, quality: .p1080)
 
         #expect(queue.inputError == "This video is already in the list.")
         #expect(queue.active.count == 1)
         #expect(history.entries == [entry])
+    }
+
+    @Test("Downloading again uses the resolution selected now")
+    func retryUsesCurrentQuality() async throws {
+        submitVideos("a")
+        downloader.fail("a", message: "Gone")
+        await waitUntil { queue.active.isEmpty }
+
+        queue.downloadAgain(try #require(history.entries.first), destination: destination, transcriptLanguages: nil, quality: .p480)
+
+        #expect(downloader.requests.last?.quality == .p480)
     }
 
     @Test("Downloading again keeps the known title")
@@ -332,7 +357,7 @@ struct DownloadQueueTests {
         downloader.fail("a", message: "Gone")
         await waitUntil { queue.active.isEmpty }
 
-        queue.downloadAgain(try #require(history.entries.first), destination: destination, transcriptLanguages: nil)
+        queue.downloadAgain(try #require(history.entries.first), destination: destination, transcriptLanguages: nil, quality: .p1080)
 
         #expect(queue.active.first?.title == "Clip")
     }
@@ -356,6 +381,16 @@ struct DownloadQueueTests {
         #expect(!queue.isReadingPlaylist)
         #expect(queue.active.map(\.title) == ["Title a", "Title b", "Title c"])
         #expect(queue.queued.map(\.title) == ["Title d", "Title e"])
+    }
+
+    @Test("A playlist's videos all use the chosen resolution")
+    func playlistUsesQuality() async {
+        downloader.playlistResult = .success(entries("a", "b"))
+
+        _ = submit(playlistURL, quality: .p720)
+        await waitUntil { queue.active.count == 2 }
+
+        #expect(downloader.requests.map(\.quality) == [.p720, .p720])
     }
 
     @Test("A playlist skips videos already running")
@@ -506,6 +541,25 @@ struct SettingsStoreTests {
         #expect(store.transcriptsEnabled)
         #expect(store.transcriptLanguages == "en,es")
         #expect(store.transcriptRequest == "en,es")
+    }
+
+    @Test("Starts at 1080p, then remembers the last resolution")
+    func remembersQuality() {
+        let defaults = makeDefaults()
+        let store = SettingsStore(defaults: defaults)
+        #expect(store.videoQuality == .p1080)
+
+        store.videoQuality = .p480
+
+        #expect(SettingsStore(defaults: defaults).videoQuality == .p480)
+    }
+
+    @Test("Falls back to 1080p for an unrecognized saved resolution")
+    func ignoresUnknownQuality() {
+        let defaults = makeDefaults()
+        defaults.set("8k", forKey: "videoQuality")
+
+        #expect(SettingsStore(defaults: defaults).videoQuality == .p1080)
     }
 
     @Test("Persists transcript choices across launches")

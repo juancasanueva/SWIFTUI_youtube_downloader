@@ -11,6 +11,7 @@ final class DownloadQueue {
         let video: YouTubeURL
         let destination: URL
         let transcriptLanguages: String?
+        let quality: VideoQuality
         var title: String?
         var progress: DownloadProgress?
         var isFetchingTranscripts = false
@@ -47,14 +48,14 @@ final class DownloadQueue {
     // MARK: - Adding
 
     /// Returns whether the text was accepted, so the caller knows to clear it.
-    func submit(urlText: String, destination: URL, transcriptLanguages: String?) -> Bool {
+    func submit(urlText: String, destination: URL, transcriptLanguages: String?, quality: VideoQuality) -> Bool {
         inputError = nil
 
         if let video = YouTubeURL(urlText) {
-            return add(video, title: nil, destination: destination, transcriptLanguages: transcriptLanguages)
+            return add(video, title: nil, destination: destination, transcriptLanguages: transcriptLanguages, quality: quality)
         }
         if let playlist = YouTubePlaylistURL(urlText) {
-            readPlaylist(playlist, destination: destination, transcriptLanguages: transcriptLanguages)
+            readPlaylist(playlist, destination: destination, transcriptLanguages: transcriptLanguages, quality: quality)
             return true
         }
         inputError = "Enter a valid YouTube video or playlist URL."
@@ -62,19 +63,19 @@ final class DownloadQueue {
     }
 
     /// The old entry stays until the new result replaces it, so cancelling the retry loses nothing.
-    func downloadAgain(_ entry: HistoryEntry, destination: URL, transcriptLanguages: String?) {
+    func downloadAgain(_ entry: HistoryEntry, destination: URL, transcriptLanguages: String?, quality: VideoQuality) {
         inputError = nil
         guard let video = YouTubeURL(entry.video.absoluteString) else { return }
 
-        _ = add(video, title: entry.title, destination: destination, transcriptLanguages: transcriptLanguages)
+        _ = add(video, title: entry.title, destination: destination, transcriptLanguages: transcriptLanguages, quality: quality)
     }
 
     func clearInputError() {
         inputError = nil
     }
 
-    private func add(_ video: YouTubeURL, title: String?, destination: URL, transcriptLanguages: String?) -> Bool {
-        guard enqueue(video, title: title, destination: destination, transcriptLanguages: transcriptLanguages) else {
+    private func add(_ video: YouTubeURL, title: String?, destination: URL, transcriptLanguages: String?, quality: VideoQuality) -> Bool {
+        guard enqueue(video, title: title, destination: destination, transcriptLanguages: transcriptLanguages, quality: quality) else {
             inputError = "This video is already in the list."
             return false
         }
@@ -83,15 +84,15 @@ final class DownloadQueue {
     }
 
     /// Two processes writing the same video would corrupt the file, so a video can only be listed once.
-    private func enqueue(_ video: YouTubeURL, title: String?, destination: URL, transcriptLanguages: String?) -> Bool {
+    private func enqueue(_ video: YouTubeURL, title: String?, destination: URL, transcriptLanguages: String?, quality: VideoQuality) -> Bool {
         guard !(active + queued).contains(where: { $0.video == video }) else {
             return false
         }
-        queued.append(Item(video: video, destination: destination, transcriptLanguages: transcriptLanguages, title: title))
+        queued.append(Item(video: video, destination: destination, transcriptLanguages: transcriptLanguages, quality: quality, title: title))
         return true
     }
 
-    private func readPlaylist(_ playlist: YouTubePlaylistURL, destination: URL, transcriptLanguages: String?) {
+    private func readPlaylist(_ playlist: YouTubePlaylistURL, destination: URL, transcriptLanguages: String?, quality: VideoQuality) {
         let id = UUID()
         playlistTasks[id] = Task {
             let result = await Result { try await downloader.playlistEntries(of: playlist) }
@@ -103,7 +104,7 @@ final class DownloadQueue {
                 inputError = "This playlist has no videos."
             case .success(let entries):
                 for entry in entries {
-                    _ = enqueue(entry.video, title: entry.title, destination: destination, transcriptLanguages: transcriptLanguages)
+                    _ = enqueue(entry.video, title: entry.title, destination: destination, transcriptLanguages: transcriptLanguages, quality: quality)
                 }
                 startWaitingDownloads()
             case .failure(let error):
@@ -147,7 +148,8 @@ final class DownloadQueue {
             let request = DownloadRequest(
                 video: item.video,
                 destination: item.destination,
-                transcriptLanguages: item.transcriptLanguages
+                transcriptLanguages: item.transcriptLanguages,
+                quality: item.quality
             )
             let events = downloader.download(request)
             downloadTasks[item.id] = Task { await consume(events, for: item.id) }

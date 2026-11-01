@@ -55,19 +55,19 @@ nonisolated struct ProcessVideoDownloader: VideoDownloading {
         if let languages = request.transcriptLanguages {
             try Task.checkCancellation()
             continuation.yield(.fetchingTranscripts)
-            await fetchTranscripts(request, languages: languages, reportingTo: continuation)
+            await fetchTranscripts(request, languages: languages, videoFile: file, reportingTo: continuation)
         }
         try Task.checkCancellation()
-        continuation.yield(.finished(file))
+        continuation.yield(.finished(file ?? request.destination))
     }
 
     private func downloadVideo(
         _ request: DownloadRequest,
         reportingTo continuation: AsyncThrowingStream<DownloadEvent, Error>.Continuation
-    ) async throws -> URL {
+    ) async throws -> URL? {
         var file: URL?
         var lastError: String?
-        let arguments = YtDlpCommand.videoArguments(for: request.video, destination: request.destination)
+        let arguments = YtDlpCommand.videoArguments(for: request.video, destination: request.destination, quality: request.quality)
 
         let status = try await run(arguments: arguments) { line in
             switch YtDlpOutputLine(line) {
@@ -82,13 +82,14 @@ nonisolated struct ProcessVideoDownloader: VideoDownloading {
         guard status == 0 else {
             throw DownloadError.failed(lastError ?? Self.exitMessage(status))
         }
-        return file ?? request.destination
+        return file
     }
 
     /// Never throws: the video is already saved, so a failure here is only reported.
     private func fetchTranscripts(
         _ request: DownloadRequest,
         languages: String,
+        videoFile: URL?,
         reportingTo continuation: AsyncThrowingStream<DownloadEvent, Error>.Continuation
     ) async {
         var written: [URL] = []
@@ -97,7 +98,8 @@ nonisolated struct ProcessVideoDownloader: VideoDownloading {
         let arguments = YtDlpCommand.transcriptArguments(
             for: request.video,
             destination: request.destination,
-            languages: languages
+            languages: languages,
+            videoFile: videoFile
         )
 
         let status: Int32
@@ -171,7 +173,7 @@ nonisolated struct ProcessVideoDownloader: VideoDownloading {
         }
     }
 
-    private func locateExecutable() -> URL? {
+    func locateExecutable() -> URL? {
         searchDirectories
             .map { $0.appending(path: "yt-dlp") }
             .first { FileManager.default.isExecutableFile(atPath: $0.path(percentEncoded: false)) }

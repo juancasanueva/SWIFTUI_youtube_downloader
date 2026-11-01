@@ -1,13 +1,17 @@
 import Foundation
 
 nonisolated enum YtDlpCommand {
-    private static let outputTemplate = "%(title)s [%(id)s].%(ext)s"
+    /// The height keeps each resolution in its own file. With one shared name, asking for 720p
+    /// after 1080p would find the existing file and report success without downloading anything.
+    private static let videoTemplate = "%(title)s [%(id)s] %(height)sp.%(ext)s"
+    private static let transcriptFallbackTemplate = "%(title)s [%(id)s].%(ext)s"
 
     /// `--` keeps the URL from ever being read as an option.
-    /// `-t mp4` prefers H.264/AAC so the result plays in QuickTime.
-    static func videoArguments(for video: YouTubeURL, destination: URL) -> [String] {
+    static func videoArguments(for video: YouTubeURL, destination: URL, quality: VideoQuality) -> [String] {
         [
-            "-t", "mp4",
+            "--merge-output-format", "mp4",
+            "--remux-video", "mp4",
+            "-S", quality.formatSort,
             "--no-playlist",
             "--newline",
             "--progress",
@@ -17,7 +21,7 @@ nonisolated enum YtDlpCommand {
             "--print", "after_move:file=%(filepath)s",
             "--progress-template", "download:progress=%(progress._percent)s\t%(progress._speed_str)s\t%(progress._eta_str)s",
             "-P", destination.path(percentEncoded: false),
-            "-o", outputTemplate,
+            "-o", videoTemplate,
             "--",
             video.url.absoluteString,
         ]
@@ -31,7 +35,9 @@ nonisolated enum YtDlpCommand {
     /// from aborting the rest, and reports it as a warning instead.
     ///
     /// Languages need exact codes: `en.*` also matches every track auto-translated from English.
-    static func transcriptArguments(for video: YouTubeURL, destination: URL, languages: String) -> [String] {
+    ///
+    /// Named after `videoFile`, so subtitles sit beside the video they belong to.
+    static func transcriptArguments(for video: YouTubeURL, destination: URL, languages: String, videoFile: URL?) -> [String] {
         let codes = languages.split(separator: ",").map(String.init)
         let tracks = codes.map { "\($0)-orig" } + codes
 
@@ -44,10 +50,15 @@ nonisolated enum YtDlpCommand {
             "--sub-langs", tracks.joined(separator: ","),
             "--sub-format", "vtt/best",
             "-P", destination.path(percentEncoded: false),
-            "-o", outputTemplate,
+            "-o", videoFile.map(transcriptTemplate) ?? transcriptFallbackTemplate,
             "--",
             video.url.absoluteString,
         ]
+    }
+
+    private static func transcriptTemplate(for videoFile: URL) -> String {
+        let name = videoFile.deletingPathExtension().lastPathComponent
+        return "\(name.replacingOccurrences(of: "%", with: "%%")).%(ext)s"
     }
 
     static func playlistArguments(for playlist: YouTubePlaylistURL) -> [String] {
@@ -59,6 +70,23 @@ nonisolated enum YtDlpCommand {
             "--",
             playlist.url.absoluteString,
         ]
+    }
+}
+
+nonisolated private extension VideoQuality {
+    /// A capped resolution comes first so it's always honored, then H.264/AAC so the result plays
+    /// in QuickTime. YouTube generally has no H.264 above 1080p, so Best drops that preference.
+    var formatSort: String {
+        switch self {
+        case .best: "res,fps,hdr:12,acodec:aac"
+        case .p1080: Self.cappedSort(height: 1080)
+        case .p720: Self.cappedSort(height: 720)
+        case .p480: Self.cappedSort(height: 480)
+        }
+    }
+
+    private static func cappedSort(height: Int) -> String {
+        "res:\(height),vcodec:h264,lang,quality,fps,hdr:12,acodec:aac"
     }
 }
 

@@ -1,10 +1,24 @@
 import Foundation
 
+nonisolated enum VideoQuality: String, CaseIterable, Identifiable, Sendable {
+    case best
+    case p1080 = "1080p"
+    case p720 = "720p"
+    case p480 = "480p"
+
+    var id: Self { self }
+
+    var label: String {
+        self == .best ? "Best" : rawValue
+    }
+}
+
 nonisolated struct DownloadRequest: Equatable, Sendable {
     let video: YouTubeURL
     let destination: URL
     /// Comma-separated language codes, or `nil` to skip transcripts.
     let transcriptLanguages: String?
+    let quality: VideoQuality
 }
 
 nonisolated struct DownloadProgress: Equatable, Sendable {

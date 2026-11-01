@@ -56,7 +56,7 @@ struct StatusItemControllerTests {
     func closingClearsInputError() async throws {
         let controller = makeController()
         try await Task.sleep(for: .seconds(1))
-        _ = queue.submit(urlText: "not a url", destination: URL(filePath: "/tmp"), transcriptLanguages: nil)
+        _ = queue.submit(urlText: "not a url", destination: URL(filePath: "/tmp"), transcriptLanguages: nil, quality: .p1080)
 
         controller.togglePanel()
         try await waitUntil { controller.isPanelOpen }
@@ -70,7 +70,7 @@ struct StatusItemControllerTests {
     @Test("Opening the panel leaves a running download alone")
     func openingKeepsRunningDownload() {
         let controller = makeController()
-        _ = queue.submit(urlText: "https://youtu.be/abc", destination: URL(filePath: "/tmp"), transcriptLanguages: nil)
+        _ = queue.submit(urlText: "https://youtu.be/abc", destination: URL(filePath: "/tmp"), transcriptLanguages: nil, quality: .p1080)
 
         controller.togglePanel()
 

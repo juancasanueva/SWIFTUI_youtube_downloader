@@ -2,7 +2,7 @@ import SwiftUI
 
 struct DownloadPanelView: View {
     let queue: DownloadQueue
-    let settings: SettingsStore
+    @Bindable var settings: SettingsStore
     let onOpenSettings: () -> Void
     let onClose: () -> Void
 
@@ -24,7 +24,7 @@ struct DownloadPanelView: View {
             .frame(height: min(listHeight, maxListHeight))
         }
         .padding()
-        .frame(width: 420)
+        .frame(width: 480)
         .onAppear { isURLFieldFocused = true }
         .onExitCommand(perform: onClose)
     }
@@ -35,6 +35,15 @@ struct DownloadPanelView: View {
                 .textFieldStyle(.roundedBorder)
                 .focused($isURLFieldFocused)
                 .onSubmit(submit)
+
+            Picker("Resolution", selection: $settings.videoQuality) {
+                ForEach(VideoQuality.allCases) { quality in
+                    Text(quality.label).tag(quality)
+                }
+            }
+            .labelsHidden()
+            .fixedSize()
+            .help("Resolution")
 
             Button("Download", action: submit)
                 .keyboardShortcut(.defaultAction)
@@ -82,7 +91,12 @@ struct DownloadPanelView: View {
                 DownloadSection(title: "History", count: queue.history.entries.count, clearLabel: "Clear history", clear: queue.history.clear) {
                     ForEach(queue.history.entries) { entry in
                         HistoryRow(entry: entry) {
-                            queue.downloadAgain(entry, destination: settings.downloadFolder, transcriptLanguages: settings.transcriptRequest)
+                            queue.downloadAgain(
+                                entry,
+                                destination: settings.downloadFolder,
+                                transcriptLanguages: settings.transcriptRequest,
+                                quality: settings.videoQuality
+                            )
                         } onRemove: {
                             queue.history.remove(entry.id)
                         }
@@ -96,7 +110,8 @@ struct DownloadPanelView: View {
         let accepted = queue.submit(
             urlText: urlText,
             destination: settings.downloadFolder,
-            transcriptLanguages: settings.transcriptRequest
+            transcriptLanguages: settings.transcriptRequest,
+            quality: settings.videoQuality
         )
         if accepted { urlText = "" }
     }

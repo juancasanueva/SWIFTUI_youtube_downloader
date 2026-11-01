@@ -8,6 +8,7 @@ final class SettingsStore {
     private static let transcriptsEnabledKey = "transcriptsEnabled"
     private static let transcriptLanguagesKey = "transcriptLanguages"
     private static let defaultTranscriptLanguages = "en,es"
+    private static let videoQualityKey = "videoQuality"
 
     var downloadFolder: URL {
         didSet {
@@ -25,6 +26,13 @@ final class SettingsStore {
     var transcriptLanguages: String {
         didSet {
             defaults.set(transcriptLanguages, forKey: Self.transcriptLanguagesKey)
+        }
+    }
+
+    /// The resolution selected in the panel, remembered for next time.
+    var videoQuality: VideoQuality {
+        didSet {
+            defaults.set(videoQuality.rawValue, forKey: Self.videoQualityKey)
         }
     }
 
@@ -49,5 +57,6 @@ final class SettingsStore {
         }
         transcriptsEnabled = defaults.object(forKey: Self.transcriptsEnabledKey) as? Bool ?? true
         transcriptLanguages = defaults.string(forKey: Self.transcriptLanguagesKey) ?? Self.defaultTranscriptLanguages
+        videoQuality = defaults.string(forKey: Self.videoQualityKey).flatMap(VideoQuality.init) ?? .p1080
     }
 }
