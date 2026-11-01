@@ -53,7 +53,6 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
             popover.performClose(nil)
         } else {
             // A fresh view resets the field and refocuses it on every opening.
-            downloads.clearResult()
             popover.contentViewController = makePanelContent()
             // A menu bar app is not active, and the text field needs key status.
             // A global shortcut brings no activation of its own, so it has to be forced.
@@ -70,6 +69,8 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     }
 
     func popoverDidClose(_ notification: Notification) {
+        // Cleared on close, not on open, so a result that arrives while the panel is closed still gets seen.
+        downloads.clearResult()
         if let outsideClickMonitor {
             NSEvent.removeMonitor(outsideClickMonitor)
         }

@@ -40,14 +40,19 @@ struct StatusItemControllerTests {
         #expect(!controller.isPanelOpen)
     }
 
-    @Test("Opening the panel forgets the previous result")
-    func openingClearsResult() {
+    @Test("A result that arrived while closed survives opening, and closing clears it")
+    func resultIsClearedOnlyAfterBeingSeen() async throws {
         let controller = makeController()
+        let failure = DownloadStore.Phase.failed("Enter a valid YouTube video URL.")
+        try await Task.sleep(for: .seconds(1))
         downloads.start(urlText: "not a url", destination: URL(filePath: "/tmp"))
-        #expect(downloads.phase == .failed("Enter a valid YouTube video URL."))
 
         controller.togglePanel()
+        try await waitUntil { controller.isPanelOpen }
+        #expect(downloads.phase == failure)
 
+        controller.togglePanel()
+        try await waitUntil { downloads.phase == .idle }
         #expect(downloads.phase == .idle)
     }
 

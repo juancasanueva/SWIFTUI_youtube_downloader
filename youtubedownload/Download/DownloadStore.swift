@@ -40,7 +40,7 @@ final class DownloadStore {
         currentDownload?.cancel()
     }
 
-    /// Forgets the last result so a reopened panel starts clean. A running download is left alone.
+    /// Forgets a result the user has seen. A running download is left alone.
     func clearResult() {
         if !isDownloading { phase = .idle }
     }
