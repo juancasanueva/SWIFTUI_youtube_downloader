@@ -11,7 +11,8 @@ A small macOS menu bar app that downloads YouTube videos with [yt-dlp](https://g
 - **Transcripts:** subtitles are saved as `.vtt` files next to each video, including auto-generated ones. Turn this off or change the languages in Settings. If a language fails, the others and the video are kept.
 - **History:** the last 200 downloads are kept, so you can play them again, show them in Finder, open their transcript, or retry failures.
 - Downloads keep running after you close the panel. The menu bar icon fills in while the app is busy.
-- Saves H.264/AAC `.mp4` files, which play in QuickTime.
+- **Resolution:** choose Best, 1080p, 720p or 480p next to the URL field. The app remembers your choice, and a playlist's videos all use it. A video that doesn't reach that height downloads at the closest one.
+- Saves `.mp4` files, with the height in the name so each resolution gets its own file. 1080p and below prefer H.264/AAC, which plays in QuickTime. YouTube generally has no H.264 above 1080p, so Best can give AV1 or VP9, which QuickTime may not play.
 - Choose the download folder in Settings, from the panel's gear button or by right-clicking the icon. The default is `~/Downloads`.
 - Right-click the icon to quit.
 - **Launch at Login:** on by default once the app is in `/Applications` or `~/Applications`, and only applied once, so turning it off in Settings sticks. Copies run from a build folder stay off unless you turn it on yourself.
@@ -26,13 +27,13 @@ History is stored in `~/Library/Application Support/com.juancasanueva.youtubedow
 
 - macOS 15.6 or later
 - Xcode 27 to build
-- yt-dlp, ffmpeg and a JavaScript runtime (Deno) for yt-dlp:
+- yt-dlp and ffmpeg. Homebrew's yt-dlp already brings the JavaScript runtime it needs (Deno), but not ffmpeg, and without ffmpeg downloads silently fall back to about 360p:
 
   ```sh
-  brew install yt-dlp ffmpeg deno
+  brew install yt-dlp ffmpeg
   ```
 
-The app looks for `yt-dlp` in `/opt/homebrew/bin`, `/usr/local/bin`, `/opt/local/bin` and `~/.local/bin`.
+The app looks for `yt-dlp` in `/opt/homebrew/bin`, `/usr/local/bin`, `/opt/local/bin` and `~/.local/bin`. Settings shows whether it was found, with the install command if it wasn't, and checks again each time you return to the app.
 
 ## Build and run
 

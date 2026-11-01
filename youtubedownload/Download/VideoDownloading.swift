@@ -50,7 +50,7 @@ nonisolated enum DownloadError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .toolNotFound:
-            "yt-dlp is not installed. Install it with: brew install yt-dlp"
+            "yt-dlp is not installed. Install it with: \(YtDlpStatus.installCommand)"
         case .failed(let message):
             message
         }

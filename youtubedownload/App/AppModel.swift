@@ -8,6 +8,7 @@ final class AppModel {
     private let queue = DownloadQueue(downloader: ProcessVideoDownloader(), history: HistoryStore())
 
     private let launchAtLogin = LaunchAtLogin(service: MainAppLoginItem())
+    private let ytDlp = YtDlpStatus(locate: ProcessVideoDownloader().locateExecutable)
 
     private lazy var settingsWindow = makeSettingsWindow()
     private var statusItem: StatusItemController?
@@ -29,7 +30,7 @@ final class AppModel {
     }
 
     private func makeSettingsWindow() -> NSWindow {
-        let controller = NSHostingController(rootView: SettingsView(settings: settings, launchAtLogin: launchAtLogin))
+        let controller = NSHostingController(rootView: SettingsView(settings: settings, launchAtLogin: launchAtLogin, ytDlp: ytDlp))
         controller.sizingOptions = [.preferredContentSize]
         let window = NSWindow(contentViewController: controller)
         window.title = "Settings"

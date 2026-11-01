@@ -5,6 +5,7 @@ import SwiftUI
 struct SettingsView: View {
     @Bindable var settings: SettingsStore
     let launchAtLogin: LaunchAtLogin
+    let ytDlp: YtDlpStatus
 
     private var launchAtLoginBinding: Binding<Bool> {
         Binding(get: { launchAtLogin.isEnabled }, set: { launchAtLogin.setEnabled($0) })
@@ -12,6 +13,10 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            Section {
+                YtDlpStatusView(status: ytDlp)
+            }
+
             Section {
                 Toggle("Launch at Login", isOn: launchAtLoginBinding)
 
@@ -54,10 +59,16 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .frame(width: 480)
         .fixedSize(horizontal: false, vertical: true)
-        .onAppear(perform: launchAtLogin.refreshStatus)
+        .onAppear(perform: refreshSystemState)
+        // Either can change while the app is in the background, such as installing yt-dlp in Terminal.
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            launchAtLogin.refreshStatus()
+            refreshSystemState()
         }
+    }
+
+    private func refreshSystemState() {
+        launchAtLogin.refreshStatus()
+        ytDlp.refresh()
     }
 
     private func chooseFolder() {
