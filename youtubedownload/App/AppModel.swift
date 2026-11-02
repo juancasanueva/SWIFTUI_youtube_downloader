@@ -2,7 +2,7 @@ import AppKit
 import Carbon.HIToolbox
 import SwiftUI
 
-/// Composition root: owns the stores, the menu bar item, the hot key, and the settings window.
+/// Composition root: owns the stores, the menu bar item, the hot key, and the settings and About windows.
 final class AppModel {
     private let settings = SettingsStore()
     private let queue = DownloadQueue(downloader: ProcessVideoDownloader(), history: HistoryStore())
@@ -18,14 +18,19 @@ final class AppModel {
         : nil
 
     private lazy var settingsWindow = makeSettingsWindow()
+    private lazy var aboutWindow = makeAboutWindow()
     private var statusItem: StatusItemController?
     private var hotKey: GlobalHotKey?
 
     init() {
         launchAtLogin.applyDefault()
-        statusItem = StatusItemController(queue: queue, settings: settings, updater: updater) { [weak self] in
-            self?.showSettings()
-        }
+        statusItem = StatusItemController(
+            queue: queue,
+            settings: settings,
+            updater: updater,
+            openSettings: { [weak self] in self?.showSettings() },
+            openAbout: { [weak self] in self?.showAbout() }
+        )
         hotKey = GlobalHotKey(keyCode: kVK_ANSI_D, modifiers: optionKey | shiftKey) { [weak self] in
             self?.statusItem?.togglePanel()
         }
@@ -34,6 +39,22 @@ final class AppModel {
     private func showSettings() {
         NSApp.activate()
         settingsWindow.makeKeyAndOrderFront(nil)
+    }
+
+    private func showAbout() {
+        NSApp.activate()
+        aboutWindow.makeKeyAndOrderFront(nil)
+    }
+
+    private func makeAboutWindow() -> NSWindow {
+        let controller = NSHostingController(rootView: AboutView(info: .current))
+        controller.sizingOptions = [.preferredContentSize]
+        let window = NSWindow(contentViewController: controller)
+        window.title = "About \(AboutInfo.current.name)"
+        window.styleMask = [.titled, .closable]
+        window.isReleasedWhenClosed = false
+        window.center()
+        return window
     }
 
     private func makeSettingsWindow() -> NSWindow {

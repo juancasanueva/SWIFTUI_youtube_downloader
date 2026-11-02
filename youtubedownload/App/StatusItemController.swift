@@ -20,6 +20,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     /// `nil` in the unit-test host; the menu item is then disabled.
     private let updater: (any AppUpdating)?
     private let openSettings: () -> Void
+    private let openAbout: () -> Void
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let popover = NSPopover()
     private var outsideClickMonitor: Any?
@@ -28,11 +29,12 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         popover.isShown
     }
 
-    init(queue: DownloadQueue, settings: SettingsStore, updater: (any AppUpdating)?, openSettings: @escaping () -> Void) {
+    init(queue: DownloadQueue, settings: SettingsStore, updater: (any AppUpdating)?, openSettings: @escaping () -> Void, openAbout: @escaping () -> Void) {
         self.queue = queue
         self.settings = settings
         self.updater = updater
         self.openSettings = openSettings
+        self.openAbout = openAbout
         super.init()
 
         statusItem.button?.target = self
@@ -134,6 +136,11 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         let menu = NSMenu()
         menu.autoenablesItems = false
 
+        let aboutItem = NSMenuItem(title: "About \(AboutInfo.current.name)", action: #selector(performOpenAbout), keyEquivalent: "")
+        aboutItem.target = self
+        menu.addItem(aboutItem)
+        menu.addItem(.separator())
+
         let updatesItem = NSMenuItem(title: "Check for Updates…", action: #selector(performCheckForUpdates), keyEquivalent: "")
         updatesItem.target = self
         updatesItem.isEnabled = UpdateCommandEnablement.isEnabled(canCheckForUpdates: updater?.canCheckForUpdates ?? false)
@@ -155,6 +162,11 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         if popover.isShown { popover.performClose(nil) }
         NSApp.activate(ignoringOtherApps: true)
         updater?.checkForUpdates()
+    }
+
+    @objc private func performOpenAbout() {
+        if popover.isShown { popover.performClose(nil) }
+        openAbout()
     }
 
     @objc private func performOpenSettings() {

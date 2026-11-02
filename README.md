@@ -21,8 +21,9 @@ The app updates itself through Sparkle: right-click the menu bar icon and choose
 - **Transcripts:** subtitles are saved as `.vtt` files next to each video, including auto-generated ones. Turn this off or change the languages in Settings. If a language fails, the others and the video are kept.
 - **History:** the last 200 downloads are kept, so you can play them again, show them in Finder, open their transcript, or retry failures.
 - Downloads keep running after you close the panel, and a URL you were typing is still there when you reopen it. The menu bar icon fills in while the app is busy.
-- **Resolution:** set a default resolution in Settings (1080p to start). A video that doesn't have it downloads at the closest one below, so with 1080p, a 720p video stays 720p and a 4K video downloads at 1080p. The picker next to the URL field starts on Default, or choose Best, 1080p, 720p or 480p for one download. A playlist's videos all use the same choice.
+- **Resolution:** set a default resolution in Settings (1080p to start). A video that doesn't have it downloads at the closest one below, so with 1080p, a 720p video stays 720p and a 4K video downloads at 1080p. The picker next to the URL field starts on Default, or choose Best or any of 2160p, 1440p, 1080p, 720p, 480p, 360p and 240p for one download. A playlist's videos all use the same choice.
 - Saves `.mp4` files, with the height in the name so each resolution gets its own file, and with `:` and `|` in the title replaced by `-`. 1080p and below prefer H.264/AAC, which plays in QuickTime. YouTube generally has no H.264 above 1080p, so Best can give AV1 or VP9, which QuickTime may not play.
+- **About:** right-click the menu bar icon and choose **About YouTubeDownloader** to see the installed version, the license and a link to this repository.
 - Choose the download folder in Settings, from the panel's gear button or by right-clicking the icon. The default is `~/Downloads`.
 - Right-click the icon to quit.
 - **Launch at Login:** on by default once the app is in `/Applications` or `~/Applications`, and only applied once, so turning it off in Settings sticks. Copies run from a build folder stay off unless you turn it on yourself.
@@ -71,7 +72,7 @@ The App Sandbox is turned off because the app runs yt-dlp as a child process, an
 
 ```
 youtubedownload/
-├── App/        App wiring, the menu bar item and the global shortcut
+├── App/        App wiring, the menu bar item, the global shortcut and the About window
 ├── Download/   URL validation, the yt-dlp integration, the queue, history and the panel
 ├── Settings/   Preferences, launch at login, the yt-dlp check and the settings view
 └── Updates/    In-app updates, with Sparkle behind one adapter

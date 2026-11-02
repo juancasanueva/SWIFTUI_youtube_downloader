@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Testing
 @testable import youtubedownload
@@ -24,9 +25,9 @@ struct StatusItemControllerTests {
         queue = DownloadQueue(downloader: IdleDownloader(), history: HistoryStore(fileURL: historyFile))
     }
 
-    private func makeController() -> StatusItemController {
+    private func makeController(openAbout: @escaping () -> Void = {}) -> StatusItemController {
         let defaults = UserDefaults(suiteName: "StatusItemControllerTests.\(UUID().uuidString)")!
-        return StatusItemController(queue: queue, settings: SettingsStore(defaults: defaults), updater: nil, openSettings: {})
+        return StatusItemController(queue: queue, settings: SettingsStore(defaults: defaults), updater: nil, openSettings: {}, openAbout: openAbout)
     }
 
     private func waitUntil(_ condition: () -> Bool) async throws {
@@ -104,5 +105,17 @@ struct StatusItemControllerTests {
         #expect(StatusItemLook(isDownloading: true).symbolName == "arrow.down.circle.fill")
         #expect(StatusItemLook(isDownloading: false).accessibilityLabel == "YouTube Downloader")
         #expect(StatusItemLook(isDownloading: true).accessibilityLabel == "YouTube Downloader, downloading")
+    }
+
+    @Test("Choosing About in the context menu opens the About window")
+    func aboutOpensWindow() {
+        var opened = 0
+        // Menu item targets are weak, so the controller has to outlive the menu.
+        let controller = makeController { opened += 1 }
+        let menu = controller.makeContextMenu()
+
+        menu.performActionForItem(at: menu.indexOfItem(withTitle: "About YouTubeDownloader"))
+
+        #expect(opened == 1)
     }
 }

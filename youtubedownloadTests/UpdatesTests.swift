@@ -98,7 +98,7 @@ struct ContextMenuUpdatesTests {
             queue: queue,
             settings: SettingsStore(defaults: defaults),
             updater: updater,
-            openSettings: openSettings
+            openSettings: openSettings, openAbout: {}
         )
     }
 
@@ -106,10 +106,10 @@ struct ContextMenuUpdatesTests {
         try #require(menu.items.first { $0.title == title })
     }
 
-    @Test func theMenuOffersUpdatesSettingsAndQuitInOrder() {
+    @Test func theMenuOffersAboutUpdatesSettingsAndQuitInOrder() {
         let menu = makeController(updater: FakeAppUpdater()).makeContextMenu()
 
-        #expect(menu.items.map(\.title) == ["Check for Updates…", "Settings…", "", "Quit"])
+        #expect(menu.items.map(\.title) == ["About YouTubeDownloader", "", "Check for Updates…", "Settings…", "", "Quit"])
     }
 
     @Test func checkForUpdatesStartsOneCheck() throws {
