@@ -111,9 +111,13 @@ struct YtDlpCommandTests {
     }
 
     @Test("Each resolution caps the height and keeps preferring H.264", arguments: [
+        (VideoQuality.p2160, "res:2160,vcodec:h264,lang,quality,fps,hdr:12,acodec:aac"),
+        (VideoQuality.p1440, "res:1440,vcodec:h264,lang,quality,fps,hdr:12,acodec:aac"),
         (VideoQuality.p1080, "res:1080,vcodec:h264,lang,quality,fps,hdr:12,acodec:aac"),
         (VideoQuality.p720, "res:720,vcodec:h264,lang,quality,fps,hdr:12,acodec:aac"),
         (VideoQuality.p480, "res:480,vcodec:h264,lang,quality,fps,hdr:12,acodec:aac"),
+        (VideoQuality.p360, "res:360,vcodec:h264,lang,quality,fps,hdr:12,acodec:aac"),
+        (VideoQuality.p240, "res:240,vcodec:h264,lang,quality,fps,hdr:12,acodec:aac"),
     ])
     func capsResolution(quality: VideoQuality, sort: String) throws {
         let arguments = try videoArguments(quality)
@@ -217,7 +221,7 @@ struct YtDlpCommandTests {
 struct QualityChoiceTests {
     @Test("The picker offers Default first, then each resolution")
     func listsChoices() {
-        #expect(QualityChoice.all.map(\.label) == ["Default", "Best", "1080p", "720p", "480p"])
+        #expect(QualityChoice.all.map(\.label) == ["Default", "Best", "2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"])
     }
 
     @Test("Default resolves to the setting, and a specific choice to itself")

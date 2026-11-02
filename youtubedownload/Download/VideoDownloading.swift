@@ -2,9 +2,13 @@ import Foundation
 
 nonisolated enum VideoQuality: String, CaseIterable, Identifiable, Sendable {
     case best
+    case p2160 = "2160p"
+    case p1440 = "1440p"
     case p1080 = "1080p"
     case p720 = "720p"
     case p480 = "480p"
+    case p360 = "360p"
+    case p240 = "240p"
 
     var id: Self { self }
 

@@ -89,9 +89,13 @@ nonisolated private extension VideoQuality {
     var formatSort: String {
         switch self {
         case .best: "res,fps,hdr:12,acodec:aac"
+        case .p2160: Self.cappedSort(height: 2160)
+        case .p1440: Self.cappedSort(height: 1440)
         case .p1080: Self.cappedSort(height: 1080)
         case .p720: Self.cappedSort(height: 720)
         case .p480: Self.cappedSort(height: 480)
+        case .p360: Self.cappedSort(height: 360)
+        case .p240: Self.cappedSort(height: 240)
         }
     }
 
