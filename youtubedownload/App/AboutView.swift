@@ -31,5 +31,5 @@ struct AboutView: View {
 }
 
 #Preview {
-    AboutView(info: AboutInfo(infoDictionary: ["CFBundleDisplayName": "YouTubeDownloader", "CFBundleShortVersionString": "1.0.6", "CFBundleVersion": "1"]))
+    AboutView(info: AboutInfo(infoDictionary: ["CFBundleShortVersionString": "1.0.6", "CFBundleVersion": "1"]))
 }

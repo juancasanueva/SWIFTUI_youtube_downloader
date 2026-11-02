@@ -9,14 +9,12 @@ nonisolated struct AboutInfo: Equatable, Sendable {
         AboutInfo(infoDictionary: Bundle.main.infoDictionary ?? [:])
     }
 
-    let name: String
+    /// The name people know the app by: the Homebrew cask and the repository use it, not the bundle name.
+    let name = "yt_downloader"
     let version: String
     let build: String?
 
     init(infoDictionary: [String: Any]) {
-        name = infoDictionary["CFBundleDisplayName"] as? String
-            ?? infoDictionary["CFBundleName"] as? String
-            ?? "YouTubeDownloader"
         version = infoDictionary["CFBundleShortVersionString"] as? String ?? "Unknown"
         build = infoDictionary["CFBundleVersion"] as? String
     }

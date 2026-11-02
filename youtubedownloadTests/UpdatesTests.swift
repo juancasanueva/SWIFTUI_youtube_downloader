@@ -109,7 +109,7 @@ struct ContextMenuUpdatesTests {
     @Test func theMenuOffersAboutUpdatesSettingsAndQuitInOrder() {
         let menu = makeController(updater: FakeAppUpdater()).makeContextMenu()
 
-        #expect(menu.items.map(\.title) == ["About YouTubeDownloader", "", "Check for Updates…", "Settings…", "", "Quit"])
+        #expect(menu.items.map(\.title) == ["About yt_downloader", "", "Check for Updates…", "Settings…", "", "Quit"])
     }
 
     @Test func checkForUpdatesStartsOneCheck() throws {

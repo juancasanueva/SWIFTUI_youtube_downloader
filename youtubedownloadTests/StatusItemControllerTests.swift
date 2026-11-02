@@ -114,7 +114,7 @@ struct StatusItemControllerTests {
         let controller = makeController { opened += 1 }
         let menu = controller.makeContextMenu()
 
-        menu.performActionForItem(at: menu.indexOfItem(withTitle: "About YouTubeDownloader"))
+        menu.performActionForItem(at: menu.indexOfItem(withTitle: "About yt_downloader"))
 
         #expect(opened == 1)
     }

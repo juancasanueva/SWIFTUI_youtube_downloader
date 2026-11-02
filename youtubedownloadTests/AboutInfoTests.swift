@@ -3,21 +3,24 @@ import Testing
 @testable import youtubedownload
 
 struct AboutInfoTests {
-    @Test("Reads the name, version and build from the bundle")
+    @Test("Reads the version and build from the bundle")
     func readsBundleInfo() {
         let info = AboutInfo(infoDictionary: [
-            "CFBundleDisplayName": "YouTubeDownloader",
             "CFBundleShortVersionString": "1.0.6",
             "CFBundleVersion": "42",
         ])
-        #expect(info.name == "YouTubeDownloader")
         #expect(info.versionText == "Version 1.0.6 (42)")
     }
 
-    @Test("Falls back to the bundle name and leaves out a missing build")
-    func fallsBack() {
-        let info = AboutInfo(infoDictionary: ["CFBundleName": "App", "CFBundleShortVersionString": "2.0"])
-        #expect(info.name == "App")
+    @Test("Calls the app yt_downloader whatever the bundle name is")
+    func name() {
+        let info = AboutInfo(infoDictionary: ["CFBundleDisplayName": "YouTubeDownloader", "CFBundleName": "YouTubeDownloader"])
+        #expect(info.name == "yt_downloader")
+    }
+
+    @Test("Leaves out a missing build")
+    func leavesOutMissingBuild() {
+        let info = AboutInfo(infoDictionary: ["CFBundleShortVersionString": "2.0"])
         #expect(info.versionText == "Version 2.0")
     }
 
