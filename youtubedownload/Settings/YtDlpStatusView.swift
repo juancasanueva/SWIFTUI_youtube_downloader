@@ -15,7 +15,7 @@ struct YtDlpStatusView: View {
                 )
             }
         } else {
-            LabeledContent("yt-dlp") {
+            LabeledContent("Dependency: yt-dlp") {
                 Label("Not installed", systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.red)
             }
@@ -29,14 +29,19 @@ struct YtDlpStatusView: View {
     }
 
     private func installedRow(location: URL) -> some View {
-        LabeledContent("yt-dlp") {
+        LabeledContent("Dependency: yt-dlp") {
             Group {
                 if status.isOutdated {
                     Label(installedText("Out of date"), systemImage: "exclamationmark.triangle.fill")
                         .foregroundStyle(.orange)
                 } else {
-                    Label(installedText("Installed"), systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+                    // Only the checkmark is green; the version reads as plain text.
+                    Label {
+                        Text(installedText("Installed"))
+                    } icon: {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    }
                 }
             }
             .help(location.path(percentEncoded: false))
