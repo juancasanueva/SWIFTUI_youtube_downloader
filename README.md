@@ -1,4 +1,4 @@
-# YouTube Downloader
+# <img src="youtubedownload/Assets.xcassets/AppIcon.appiconset/icon_128.png" alt="" width="48" height="48" align="absmiddle"> YouTube Downloader
 
 A small macOS menu bar app that downloads YouTube videos with [yt-dlp](https://github.com/yt-dlp/yt-dlp).
 
